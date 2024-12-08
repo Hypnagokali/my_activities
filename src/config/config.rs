@@ -1,9 +1,9 @@
 const DEFAULT_HOST: &str = "127.0.0.1";
-const DEFAULT_PORT: i32 = 5665;
+const DEFAULT_PORT: u16 = 5665;
 
 pub struct Config {
     pub host: String,
-    pub port: i32,
+    pub port: u16,
 }
 
 impl Config {
@@ -13,8 +13,8 @@ impl Config {
             Err(_) => DEFAULT_HOST.to_string()
         };
 
-        let port: i32 = match std::env::var("MA_PORT") {
-            Ok(p) => p.parse().expect("MA_PORT must be of type i32"),
+        let port: u16 = match std::env::var("MA_PORT") {
+            Ok(p) => p.parse().expect("MA_PORT must be of type u16"),
             Err(_) => DEFAULT_PORT
         };
 
