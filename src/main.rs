@@ -5,6 +5,9 @@ use controller::{activity_controller, authentication_controller};
 
 mod config;
 mod controller;
+mod service;
+mod domain;
+mod error;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
