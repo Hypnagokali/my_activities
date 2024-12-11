@@ -17,7 +17,7 @@ impl TestAuthenticationService {
         let salt = SaltString::generate(&mut OsRng);
         println!("Salt for Testuser: {}", salt);
         user_salt_map.insert(1,salt.to_string());
-        
+
         match Argon2::default().hash_password("test123".as_bytes(), &salt) {
             Ok(hashed) => {
                 user_pass_map.insert(1, hashed.to_string());                
@@ -42,7 +42,6 @@ impl TestAuthenticationService {
         match self.user_pass_map.get(user_id) {
             Some(hashed_user_pass) => {
                 let check_against = self.hash_string(password, salt);
-                println!("{} == {}", *hashed_user_pass, check_against);
 
                 *hashed_user_pass == check_against
             },
@@ -66,4 +65,31 @@ impl AuthenticationApi for TestAuthenticationService {
             None => false
         }
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::domain::{auth_api::AuthenticationApi, user::User};
+
+    use super::TestAuthenticationService;
+
+
+    #[test]
+    fn should_return_true_when_password_correct() {
+        let auth = TestAuthenticationService::new();
+
+        let user = User::new(1, "test@example.org", "Hans");
+
+        assert!(auth.is_password_correct(&user, "test123"), "The password should match");
+    }
+
+    #[test]
+    fn should_return_false_when_password_incorrect() {
+        let auth = TestAuthenticationService::new();
+
+        let user = User::new(1, "test@example.org", "Hans");
+
+        assert!(!auth.is_password_correct(&user, "some123"), "Password is not correct. This should return false");
+    }
+
 }
