@@ -1,7 +1,11 @@
+use std::sync::Arc;
+
 use actix_session::{storage::CookieSessionStore, SessionMiddleware};
-use actix_web::{cookie::Key, App, HttpServer};
+use actix_web::{cookie::Key, web::Data, App, HttpServer};
 use config::config::Config;
 use controller::{activity_controller, authentication_controller};
+use domain::{user, user_api::UserApi};
+use service::user_service::TestUserService;
 
 mod config;
 mod controller;
@@ -14,13 +18,16 @@ async fn main() -> std::io::Result<()> {
     dotenvy::dotenv().ok();
     let config = Config::from_env();
 
-    let key = Key::generate();
+    let user_api: Arc<dyn UserApi + Sync + Send> = Arc::new(TestUserService::new());
+    let app_data = Data::from(user_api);
 
+    let encrypt_key_for_cookies = Key::generate();
     let server = HttpServer::new(move || {
         App::new()
         .configure(activity_controller::config)
         .configure(authentication_controller::config)
-        .wrap(SessionMiddleware::new(CookieSessionStore::default(), key.clone()))
+        .app_data(app_data.clone())
+        .wrap(SessionMiddleware::new(CookieSessionStore::default(), encrypt_key_for_cookies.clone()))
     })
     .bind((config.host.clone(), config.port))?
     .run();
