@@ -9,3 +9,4 @@ actix-web="4"
 serde = { version = "1.0.216", features = ["derive"]}
 actix-session = { version = "0.10.1", features = ["cookie-session"]}
 argon2 = { version = "0.5.3", features = ["password-hash"]}
+futures = "0.3.31"

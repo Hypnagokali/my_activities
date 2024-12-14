@@ -2,9 +2,10 @@ use std::sync::Arc;
 
 use actix_session::{storage::CookieSessionStore, SessionMiddleware};
 use actix_web::{cookie::Key, web::Data, App, HttpServer};
+use application::auth_middleware::Auth;
 use config::config::Config;
 use controller::{activity_controller, authentication_controller};
-use domain::{user, user_api::UserApi};
+use domain::user_api::UserApi;
 use service::user_service::TestUserService;
 
 mod config;
@@ -12,6 +13,7 @@ mod controller;
 mod service;
 mod domain;
 mod error;
+mod application;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -27,6 +29,7 @@ async fn main() -> std::io::Result<()> {
         .configure(activity_controller::config)
         .configure(authentication_controller::config)
         .app_data(app_data.clone())
+        .wrap(Auth::new())
         .wrap(SessionMiddleware::new(CookieSessionStore::default(), encrypt_key_for_cookies.clone()))
     })
     .bind((config.host.clone(), config.port))?
