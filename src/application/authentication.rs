@@ -4,19 +4,21 @@ use actix_session::{Session, SessionExt};
 use actix_web::{dev::{forward_ready, Service, ServiceRequest, ServiceResponse, Transform}, Error};
 use futures::future::LocalBoxFuture;
 
-pub struct Auth;
+use crate::domain::{auth_api::AuthToken, user::User};
 
-impl Auth {
+pub struct AuthMiddleware;
+
+impl AuthMiddleware {
     pub fn new() -> Self {
-        Auth {}
+        AuthMiddleware {}
     }
 }
 
-pub struct AuthMiddleware<S> {
+pub struct AuthMiddlewareInner<S> {
     service: S,
 }
 
-impl<S, B> Service<ServiceRequest> for AuthMiddleware<S>
+impl<S, B> Service<ServiceRequest> for AuthMiddlewareInner<S>
 where
     S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
     S::Future: 'static,
@@ -48,7 +50,7 @@ where
 }
 
 
-impl<S, B> Transform<S, ServiceRequest> for Auth
+impl<S, B> Transform<S, ServiceRequest> for AuthMiddleware
 where
     S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
     S::Future: 'static,
@@ -57,12 +59,12 @@ where
     type Response = ServiceResponse<B>;
     type Error = Error;
     type InitError = ();
-    type Transform = AuthMiddleware<S>;
+    type Transform = AuthMiddlewareInner<S>;
     type Future = Ready<Result<Self::Transform, Self::InitError>>;
 
     fn new_transform(&self, service: S) -> Self::Future {
         println!("new_transform (INIT process) called ...");
-        ready(Ok(AuthMiddleware { service }))
+        ready(Ok(AuthMiddlewareInner { service }))
     }
 }
 
@@ -96,7 +98,31 @@ impl Debug for DebuggableSession {
     }
 }
 
-pub fn verify_session(session: Session) -> Result<(), ()> {
-    // TODO:
-    Ok(())
+
+pub struct SessionAuthToken {
+    session: Session,
+}
+
+impl SessionAuthToken {
+    pub fn new(session: Session) -> Self {
+        SessionAuthToken {
+            session,
+        }
+    }
+}
+
+impl AuthToken for SessionAuthToken {
+    fn is_authenticated(&self) -> bool {
+        match self.get_authenticated_user() {
+            Ok(_) => true,
+            Err(_) => false,
+        }
+    }
+
+    fn get_authenticated_user(&self) -> Result<User, ()> {
+        match self.session.get::<User>("user") {
+            Ok(Some(user)) => Ok(user),
+            _ => Err(()),
+        }
+    }
 }

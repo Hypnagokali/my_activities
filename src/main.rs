@@ -2,11 +2,11 @@ use std::sync::Arc;
 
 use actix_session::{storage::CookieSessionStore, SessionMiddleware};
 use actix_web::{cookie::Key, dev::ServiceFactory, web::{self, Data}, App, HttpServer};
-use application::authentication::Auth;
+use application::authentication::AuthMiddleware;
 use config::config::Config;
 use controller::{activity_controller, authentication_controller};
 use domain::{auth_api::AuthenticationApi, user_api::UserApi};
-use service::{auth_service::TestAuthenticationService, user_service::TestUserService};
+use service::{auth_service::AuthenticationService, user_service::UserService};
 
 mod config;
 mod controller;
@@ -17,8 +17,8 @@ mod application;
 
 
 pub fn config_main_app(cfg: &mut web::ServiceConfig) {
-    let user_api: Arc<dyn UserApi> = Arc::new(TestUserService::new());
-    let auth_api: Arc<dyn AuthenticationApi> = Arc::new(TestAuthenticationService::new());
+    let user_api: Arc<dyn UserApi> = Arc::new(UserService::new());
+    let auth_api: Arc<dyn AuthenticationApi> = Arc::new(AuthenticationService::new());
 
     let user_api_data = Data::from(user_api);
     let auth_api_data = Data::from(auth_api);
@@ -50,7 +50,7 @@ async fn main() -> std::io::Result<()> {
     let server = HttpServer::new(move || {
         App::new()
         .configure(config_main_app)
-        .wrap(Auth::new())
+        .wrap(AuthMiddleware::new())
         .wrap(create_session_middleware())
         
     })

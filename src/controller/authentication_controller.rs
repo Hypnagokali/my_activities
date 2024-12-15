@@ -1,4 +1,4 @@
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime};
 
 use actix_session::Session;
 use actix_web::{
@@ -9,7 +9,7 @@ use actix_web::{
 use serde::{Deserialize, Serialize};
 
 use crate::domain::{
-    auth_api::{self, AuthenticationApi},
+    auth_api::AuthenticationApi,
     user_api::UserApi,
 };
 
@@ -57,12 +57,8 @@ pub fn config(cfg: &mut web::ServiceConfig) {
 
 #[cfg(test)]
 mod tests {
-    use std::{
-        sync::Arc,
-        time::{Duration, Instant, SystemTime, UNIX_EPOCH},
-    };
+    use std::sync::Arc;
 
-    use actix_session::SessionExt;
     use actix_web::{
         test::{call_service, init_service, TestRequest},
         web::Data,
@@ -70,9 +66,9 @@ mod tests {
     };
 
     use crate::{
-        application::authentication::{Auth, DebuggableSession},
+        application::authentication::AuthMiddleware,
         create_session_middleware,
-        domain::{auth_api::AuthenticationApi, user::User, user_api::UserApi},
+        domain::{auth_api::{AuthToken, AuthenticationApi}, user::User, user_api::UserApi},
     };
 
     use super::{config, FormLogin};
@@ -83,6 +79,15 @@ mod tests {
         fn is_password_correct(&self, _user: &crate::domain::user::User, password: &str) -> bool {
             password == "test123"
         }
+
+        fn is_authenticated(&self, _auth: &dyn AuthToken) -> bool {
+            true
+        }
+
+        fn get_authenticated_user(&self, _auth: &dyn AuthToken) -> Result<User, ()> {
+            Ok(User::new(1, "test", "test"))
+        }
+
     }
 
     struct TestUserService;
@@ -106,7 +111,7 @@ mod tests {
                 .configure(config)
                 .app_data(user_api_data.clone())
                 .app_data(auth_api_data.clone())
-                .wrap(Auth::new())
+                .wrap(AuthMiddleware::new())
                 .wrap(create_session_middleware())
         }};
     }

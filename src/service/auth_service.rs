@@ -1,14 +1,14 @@
-use std::{collections::HashMap};
+use std::collections::HashMap;
 
 use argon2::{password_hash::{rand_core::OsRng, SaltString}, Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
 
-use crate::domain::{auth_api::AuthenticationApi, user::User};
+use crate::domain::{auth_api::{AuthToken, AuthenticationApi}, user::User};
 
-pub struct TestAuthenticationService {
+pub struct AuthenticationService {
     user_pass_map: HashMap<i32, String>,
 }
 
-impl TestAuthenticationService {
+impl AuthenticationService {
     pub fn new() -> Self {
         let mut user_pass_map = HashMap::new();
         
@@ -21,13 +21,13 @@ impl TestAuthenticationService {
             Err(_) => eprintln!("Cannot create Users passwort (init error)"),
         };
     
-        TestAuthenticationService {
+        AuthenticationService {
             user_pass_map,
         }
     }
 }
 
-impl AuthenticationApi for TestAuthenticationService {
+impl AuthenticationApi for AuthenticationService {
     fn is_password_correct(&self, user: &User, password: &str) -> bool {
         match self.user_pass_map.get(&user.id) {
             Some(hashed_user_pass) => {
@@ -41,18 +41,26 @@ impl AuthenticationApi for TestAuthenticationService {
             None => false,
         }
     }
+
+    fn is_authenticated(&self, auth: &dyn AuthToken) -> bool {
+        auth.is_authenticated()
+    }
+
+    fn get_authenticated_user(&self, auth: &dyn AuthToken) -> Result<User, ()> {
+        auth.get_authenticated_user()
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::domain::{auth_api::AuthenticationApi, user::User};
 
-    use super::TestAuthenticationService;
+    use super::AuthenticationService;
 
 
     #[test]
     fn should_return_true_when_password_correct() {
-        let auth = TestAuthenticationService::new();
+        let auth = AuthenticationService::new();
 
         let user = User::new(1, "test@example.org", "Hans");
 
@@ -61,7 +69,7 @@ mod tests {
 
     #[test]
     fn should_return_false_when_password_incorrect() {
-        let auth = TestAuthenticationService::new();
+        let auth = AuthenticationService::new();
 
         let user = User::new(1, "test@example.org", "Hans");
 
