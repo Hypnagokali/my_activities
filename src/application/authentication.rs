@@ -1,4 +1,4 @@
-use std::{fmt::Debug, future::{ready, Ready}};
+use std::{fmt::Debug, future::{ready, Ready}, ops::Deref};
 
 use actix_session::{Session, SessionExt};
 use actix_web::{dev::{forward_ready, Service, ServiceRequest, ServiceResponse, Transform}, Error};
@@ -66,7 +66,15 @@ where
     }
 }
 
-struct DebuggableSession(Session);
+pub struct DebuggableSession(pub Session);
+
+impl Deref for DebuggableSession {
+    type Target = Session;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 impl Debug for DebuggableSession {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -86,4 +94,9 @@ impl Debug for DebuggableSession {
 
         debug.finish()
     }
+}
+
+pub fn verify_session(session: Session) -> Result<(), ()> {
+    // TODO:
+    Ok(())
 }
