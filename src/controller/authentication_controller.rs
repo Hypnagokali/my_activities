@@ -42,7 +42,9 @@ async fn login(
 
                 session
                     .insert("ttl", ttl)
-                    .expect("Cant create session key 'ttl'")
+                    .expect("Cant create session key 'ttl'");
+            } else {
+                return HttpResponse::BadRequest();
             }
         }
         Err(_) => return HttpResponse::BadRequest(),
@@ -107,12 +109,14 @@ mod tests {
             let user_api_data = Data::from(user_api);
             let auth_api_data = Data::from(auth_api);
 
+
+            let key = actix_web::cookie::Key::generate();
             App::new()
                 .configure(config)
                 .app_data(user_api_data.clone())
                 .app_data(auth_api_data.clone())
                 .wrap(AuthMiddleware::new())
-                .wrap(create_session_middleware())
+                .wrap(create_session_middleware(key.clone()))
         }};
     }
 

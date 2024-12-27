@@ -30,14 +30,12 @@ pub fn config_main_app(cfg: &mut web::ServiceConfig) {
 }
 
 
-pub fn create_session_middleware () -> SessionMiddleware<CookieSessionStore> {
-    let encrypt_key_for_cookies = Key::generate();
-
-    SessionMiddleware::builder(CookieSessionStore::default(), encrypt_key_for_cookies.clone())
+pub fn create_session_middleware (key: Key) -> SessionMiddleware<CookieSessionStore> {
+    SessionMiddleware::builder(CookieSessionStore::default(), key)
                 .cookie_name("sessionId".to_string())
                 .cookie_http_only(true)
                 .cookie_same_site(actix_web::cookie::SameSite::None)
-                .cookie_secure(true)
+                .cookie_secure(false)
                 .build()
             
 }
@@ -46,12 +44,13 @@ pub fn create_session_middleware () -> SessionMiddleware<CookieSessionStore> {
 async fn main() -> std::io::Result<()> {
     dotenvy::dotenv().ok();
     let config = Config::from_env();
+    let encrypt_key_for_cookies = Key::generate();
     
     let server = HttpServer::new(move || {
         App::new()
         .configure(config_main_app)
         .wrap(AuthMiddleware::new())
-        .wrap(create_session_middleware())
+        .wrap(create_session_middleware((encrypt_key_for_cookies.clone())))
         
     })
     .bind((config.host.clone(), config.port))?

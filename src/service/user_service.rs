@@ -9,7 +9,8 @@ pub struct UserService {
 impl UserService {
     pub fn new() -> Self {
         let mut users = HashMap::new();
-        users.insert("test@example.org".to_owned(), User::new(123, "test@example.org", "Hans"));
+        let test_user= User::test_user();
+        users.insert(test_user.email.clone(), test_user);
 
         return UserService {
             users,
@@ -23,7 +24,5 @@ impl UserApi for UserService {
             Some(user) => Ok(user.clone()),
             None => Err(NotFoundError::new("User not found")),
         }
-
-
     }
 }
