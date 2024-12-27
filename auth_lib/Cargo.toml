@@ -1,0 +1,9 @@
+[package]
+name = "auth_lib"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+actix-web="4"
+serde = { version = "1.0.216", features = ["derive"]}
+actix-session = { version = "0.10.1", features = ["cookie-session"]}

@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use actix_session::{storage::CookieSessionStore, SessionMiddleware};
-use actix_web::{cookie::Key, dev::ServiceFactory, web::{self, Data}, App, HttpServer};
+use actix_web::{cookie::Key, web::{self, Data}, App, HttpServer};
 use application::authentication::AuthMiddleware;
 use config::config::Config;
 use controller::{activity_controller, authentication_controller};

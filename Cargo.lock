@@ -308,6 +308,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "auth_lib"
+version = "0.1.0"
+dependencies = [
+ "actix-session",
+ "actix-web",
+ "serde",
+]
+
+[[package]]
 name = "autocfg"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -320,6 +329,7 @@ dependencies = [
  "actix-session",
  "actix-web",
  "argon2",
+ "auth_lib",
  "dotenvy",
  "futures",
  "serde",

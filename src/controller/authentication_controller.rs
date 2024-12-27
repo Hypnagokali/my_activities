@@ -45,7 +45,7 @@ async fn login(
                     .expect("Cant create session key 'ttl'")
             }
         }
-        Err(_) => return HttpResponse::Unauthorized(),
+        Err(_) => return HttpResponse::BadRequest(),
     }
 
     HttpResponse::Ok()

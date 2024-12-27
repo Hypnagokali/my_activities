@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+auth_lib ={ path = "auth_lib"}
 dotenvy = "0.15.7"
 actix-web="4"
 serde = { version = "1.0.216", features = ["derive"]}

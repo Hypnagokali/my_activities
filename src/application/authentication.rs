@@ -2,6 +2,7 @@ use std::{fmt::Debug, future::{ready, Ready}, ops::Deref};
 
 use actix_session::{Session, SessionExt};
 use actix_web::{dev::{forward_ready, Service, ServiceRequest, ServiceResponse, Transform}, Error};
+use auth_lib::session::session_auth::DebuggableSession;
 use futures::future::LocalBoxFuture;
 
 use crate::domain::{auth_api::AuthToken, user::User};
@@ -68,61 +69,5 @@ where
     }
 }
 
-pub struct DebuggableSession(pub Session);
-
-impl Deref for DebuggableSession {
-    type Target = Session;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl Debug for DebuggableSession {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let entries = self.0.entries();
-        let keys = entries.keys();
-
-        let mut debug = f.debug_tuple("Session");
-        for key in keys {
-            match self.0.get::<String>(key) {
-                Ok(Some(s)) => {
-                    debug.field(&format!("{} => {}", key, s));
-                },
-                Ok(None) => {},
-                Err(_) => {},
-            }
-        };
-
-        debug.finish()
-    }
-}
 
 
-pub struct SessionAuthToken {
-    session: Session,
-}
-
-impl SessionAuthToken {
-    pub fn new(session: Session) -> Self {
-        SessionAuthToken {
-            session,
-        }
-    }
-}
-
-impl AuthToken for SessionAuthToken {
-    fn is_authenticated(&self) -> bool {
-        match self.get_authenticated_user() {
-            Ok(_) => true,
-            Err(_) => false,
-        }
-    }
-
-    fn get_authenticated_user(&self) -> Result<User, ()> {
-        match self.session.get::<User>("user") {
-            Ok(Some(user)) => Ok(user),
-            _ => Err(()),
-        }
-    }
-}
