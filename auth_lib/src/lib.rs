@@ -2,7 +2,7 @@ use core::fmt;
 use std::future::{ready, Ready};
 
 use actix_session::{Session, SessionExt};
-use actix_web::{error::HttpError, Error, FromRequest, HttpRequest, HttpResponse, ResponseError};
+use actix_web::{Error, FromRequest, HttpRequest, HttpResponse, ResponseError};
 use serde::de::DeserializeOwned;
 use session::session_auth::DebuggableSession;
 
@@ -11,10 +11,8 @@ pub mod session;
 pub trait GetAuthenticatedUserFromRequest<U> 
 where 
     U: DeserializeOwned {
-    fn get_authenticated_user(req: &HttpRequest) -> Result<U, ()>;
+    fn get_authenticated_user(&self, req: &HttpRequest) -> Result<U, ()>;
 }
-
-pub struct AuthSession (Session);
 
 
 pub struct AuthToken<U> 

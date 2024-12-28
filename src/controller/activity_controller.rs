@@ -5,7 +5,7 @@ use crate::domain::user::User;
 
 #[get("/activities")]
 pub async fn activities(token: AuthToken<User>) -> impl Responder {
-    HttpResponse::Ok().body("my activities")
+    HttpResponse::Ok().body(format!("my activities. Request from user: {}", token.get_authenticated_user().email))
 }
 
 

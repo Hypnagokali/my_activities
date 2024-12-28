@@ -50,7 +50,7 @@ async fn main() -> std::io::Result<()> {
         App::new()
         .configure(config_main_app)
         .wrap(AuthMiddleware::new())
-        .wrap(create_session_middleware((encrypt_key_for_cookies.clone())))
+        .wrap(create_session_middleware(encrypt_key_for_cookies.clone()))
         
     })
     .bind((config.host.clone(), config.port))?

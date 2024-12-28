@@ -1,6 +1,29 @@
 use std::{fmt::Debug, ops::Deref};
 
-use actix_session::Session;
+use actix_session::{Session, SessionExt};
+use serde::de::DeserializeOwned;
+
+use crate::GetAuthenticatedUserFromRequest;
+
+
+pub struct GetUserFromSession;
+
+impl<U> GetAuthenticatedUserFromRequest<U> for GetUserFromSession
+where
+    U: DeserializeOwned
+{
+    fn get_authenticated_user(&self, req: &actix_web::HttpRequest) -> Result<U, ()> {
+        let s: Session = req.get_session();
+        let ds = DebuggableSession(s);
+        println!("FromRequest -> Session: {:?}", ds);
+
+        if let Ok(Some(user)) = ds.get::<U>("user") {
+            return Ok(user)
+        } else {
+            Err(())
+        }
+    }
+}
 
 pub struct DebuggableSession(pub Session);
 

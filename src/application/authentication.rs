@@ -1,11 +1,9 @@
-use std::{fmt::Debug, future::{ready, Ready}, ops::Deref};
+use std::future::{ready, Ready};
 
-use actix_session::{Session, SessionExt};
+use actix_session::SessionExt;
 use actix_web::{dev::{forward_ready, Service, ServiceRequest, ServiceResponse, Transform}, Error};
 use auth_lib::session::session_auth::DebuggableSession;
 use futures::future::LocalBoxFuture;
-
-use crate::domain::{auth_api::AuthToken, user::User};
 
 pub struct AuthMiddleware;
 
