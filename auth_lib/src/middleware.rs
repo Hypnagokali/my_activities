@@ -6,7 +6,7 @@ use serde::de::DeserializeOwned;
 
 use crate::GetAuthenticatedUserFromRequest;
 
-pub struct AuthSessionMiddleware<GetUserTrait, U> 
+pub struct AuthMiddleware<GetUserTrait, U> 
 where 
     GetUserTrait: GetAuthenticatedUserFromRequest<U>,
     U: DeserializeOwned
@@ -15,20 +15,20 @@ where
     user_type: PhantomData<U>
 }
 
-impl<GetUserTrait, U> AuthSessionMiddleware<GetUserTrait, U> 
+impl<GetUserTrait, U> AuthMiddleware<GetUserTrait, U> 
 where 
     GetUserTrait: GetAuthenticatedUserFromRequest<U>,
     U: DeserializeOwned
 {
     pub fn new(get_user_trait: GetUserTrait) -> Self {
-        AuthSessionMiddleware {
+        AuthMiddleware {
             get_user_trait,
             user_type: PhantomData,
         }
     }
 }
 
-pub struct AuthSessionMiddlewareInner<S, GetUserTrait, U>
+pub struct AuthMiddlewareInner<S, GetUserTrait, U>
 where 
     GetUserTrait: GetAuthenticatedUserFromRequest<U>,
     U: DeserializeOwned
@@ -38,7 +38,7 @@ where
     user_type: PhantomData<U>
 }
 
-impl<S, B, GetUserTrait, U> Service<ServiceRequest> for AuthSessionMiddlewareInner<S, GetUserTrait, U>
+impl<S, B, GetUserTrait, U> Service<ServiceRequest> for AuthMiddlewareInner<S, GetUserTrait, U>
 where
     S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
     S::Future: 'static,
@@ -54,7 +54,10 @@ where
 
     fn call(&self, req: ServiceRequest) -> Self::Future {
         println!("Session authentication {}", req.path());
-        let user_result = self.get_user_trait.get_authenticated_user(&req.request());
+        match self.get_user_trait.get_authenticated_user(&req.request()) {
+            Ok(_) => println!("User found in get_user_trait"),
+            Err(_) => println!("User not found. Error. No problem when its not an authenticated route"),
+        }
         // ToDo:
         // 1. create AuthToken
         // 2. add AuthToken to extensions
@@ -73,7 +76,7 @@ where
 }
 
 
-impl<S, B, GetUserTrait, U> Transform<S, ServiceRequest> for AuthSessionMiddleware<GetUserTrait, U>
+impl<S, B, GetUserTrait, U> Transform<S, ServiceRequest> for AuthMiddleware<GetUserTrait, U>
 where
     S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
     S::Future: 'static,
@@ -84,12 +87,12 @@ where
     type Response = ServiceResponse<B>;
     type Error = Error;
     type InitError = ();
-    type Transform = AuthSessionMiddlewareInner<S, GetUserTrait, U>;
+    type Transform = AuthMiddlewareInner<S, GetUserTrait, U>;
     type Future = Ready<Result<Self::Transform, Self::InitError>>;
 
     fn new_transform(&self, service: S) -> Self::Future {
         println!("Init AuthSessionMiddleware...");
-        ready(Ok(AuthSessionMiddlewareInner { 
+        ready(Ok(AuthMiddlewareInner { 
             service,
             get_user_trait: self.get_user_trait.clone(), // couldnt we handle this differently?
             user_type: PhantomData, 

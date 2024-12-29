@@ -2,10 +2,10 @@ use std::sync::Arc;
 
 use actix_session::{storage::CookieSessionStore, SessionMiddleware};
 use actix_web::{cookie::Key, web::{self, Data}, App, HttpServer};
-use application::authentication::AuthMiddleware;
+use auth_lib::{middleware::AuthMiddleware, session::session_auth::GetUserFromSession};
 use config::config::Config;
 use controller::{activity_controller, authentication_controller};
-use domain::{auth_api::AuthenticationApi, user_api::UserApi};
+use domain::{auth_api::AuthenticationApi, user::User, user_api::UserApi};
 use service::{auth_service::AuthenticationService, user_service::UserService};
 
 mod config;
@@ -45,11 +45,11 @@ async fn main() -> std::io::Result<()> {
     dotenvy::dotenv().ok();
     let config = Config::from_env();
     let encrypt_key_for_cookies = Key::generate();
-    
+
     let server = HttpServer::new(move || {
         App::new()
         .configure(config_main_app)
-        .wrap(AuthMiddleware::new())
+        .wrap(AuthMiddleware::<GetUserFromSession, User>::new(GetUserFromSession))
         .wrap(create_session_middleware(encrypt_key_for_cookies.clone()))
         
     })

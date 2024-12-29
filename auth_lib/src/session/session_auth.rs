@@ -6,6 +6,7 @@ use serde::de::DeserializeOwned;
 use crate::GetAuthenticatedUserFromRequest;
 
 
+#[derive(Clone)]
 pub struct GetUserFromSession;
 
 impl<U> GetAuthenticatedUserFromRequest<U> for GetUserFromSession

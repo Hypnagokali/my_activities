@@ -6,6 +6,7 @@ use actix_web::{Error, FromRequest, HttpRequest, HttpResponse, ResponseError};
 use serde::de::DeserializeOwned;
 use session::session_auth::DebuggableSession;
 
+pub mod middleware;
 pub mod session;
 
 pub trait GetAuthenticatedUserFromRequest<U> 
