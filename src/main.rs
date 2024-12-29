@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use actix_session::{storage::CookieSessionStore, SessionMiddleware};
 use actix_web::{cookie::Key, web::{self, Data}, App, HttpServer};
-use auth_lib::{middleware::AuthMiddleware, session::session_auth::GetUserFromSession};
+use auth_lib::{middleware::{AuthMiddleware, PathMatcher}, session::session_auth::GetUserFromSession};
 use config::config::Config;
 use controller::{activity_controller, authentication_controller};
 use domain::{auth_api::AuthenticationApi, user::User, user_api::UserApi};
@@ -49,7 +49,7 @@ async fn main() -> std::io::Result<()> {
     let server = HttpServer::new(move || {
         App::new()
         .configure(config_main_app)
-        .wrap(AuthMiddleware::<GetUserFromSession, User>::new(GetUserFromSession))
+        .wrap(AuthMiddleware::<GetUserFromSession, User>::new(GetUserFromSession, PathMatcher::default()))
         .wrap(create_session_middleware(encrypt_key_for_cookies.clone()))
         
     })

@@ -1,11 +1,14 @@
-use std::{collections::HashMap, future::{ready, Ready}, marker::PhantomData};
+use std::{future::{ready, Ready}, marker::PhantomData, rc::Rc, thread};
 
-use actix_web::{dev::{forward_ready, Service, ServiceRequest, ServiceResponse, Transform}, web::Data, Error, HttpMessage};
+use actix_web::{dev::{forward_ready, Service, ServiceRequest, ServiceResponse, Transform}, Error};
 use futures::future::LocalBoxFuture;
 use regex::Regex;
 use serde::de::DeserializeOwned;
+use urlencoding::encode;
 
 use crate::GetAuthenticatedUserFromRequest;
+
+const PATH_MATCHER_ANY_ENCODED: &str = "%2A"; // to match *
 
 /// PathMatcher is used to secure specific paths or to exclude paths from authenticatio
 /// exclude: exclude the path_list from authentication if true, else handles path_list as included for authentication.
@@ -16,11 +19,16 @@ pub struct PathMatcher {
 }
 
 impl PathMatcher {
+
+    pub fn default() -> Self {
+        Self::new(vec!["/login*"], true)
+    }
+
     pub fn new(path_list: Vec<&'static str>, exclude: bool) -> Self {
         let mut path_regex_list = Vec::new();
         for pattern in path_list.into_iter() {
-            let valid_regex = pattern.replace('*', ".*");
-            path_regex_list.push((pattern, Regex::new(&valid_regex).unwrap()));
+            
+            path_regex_list.push((pattern, Regex::new(&transform_to_encoded_regex(pattern)).unwrap()));
         }
         Self {
             exclude,
@@ -29,49 +37,64 @@ impl PathMatcher {
     }
 
     pub fn matches(&self, path: &str) -> bool {
-        self.path_regex_list.iter().any(|p| (p.1.is_match(path) && !self.exclude) || !p.1.is_match(path))
+        let encoded_path = transform_to_encoded_regex(path);
+        self.path_regex_list
+        .iter()
+        .any(|p| {
+                println!("check: {} against: {}", path, p.1.as_str());
+                (p.1.is_match(&encoded_path) && !self.exclude) || !p.1.is_match(&encoded_path)
+            })
     }
 }
 
-pub struct AuthMiddleware<GetUserTrait, U> 
+fn transform_to_encoded_regex(input: &str) -> String {
+    let encoded = encode(input);
+    let valid_regex = encoded.replace(PATH_MATCHER_ANY_ENCODED, ".*");
+    valid_regex
+}
+
+pub struct AuthMiddleware<AuthProvider, U> 
 where 
-    GetUserTrait: GetAuthenticatedUserFromRequest<U>,
+    AuthProvider: GetAuthenticatedUserFromRequest<U>,
     U: DeserializeOwned
 {
-    get_user_trait: GetUserTrait,
+    auth_provider: Rc<AuthProvider>,
+    path_matcher: Rc<PathMatcher>,
     user_type: PhantomData<U>
 }
 
-impl<GetUserTrait, U> AuthMiddleware<GetUserTrait, U> 
+impl<AuthProvider, U> AuthMiddleware<AuthProvider, U> 
 where 
-    GetUserTrait: GetAuthenticatedUserFromRequest<U>,
+    AuthProvider: GetAuthenticatedUserFromRequest<U>,
     U: DeserializeOwned
 {
-    pub fn new(get_user_trait: GetUserTrait) -> Self {
+    pub fn new(auth_provider: AuthProvider, path_matcher: PathMatcher) -> Self {
         AuthMiddleware {
-            get_user_trait,
+            auth_provider: Rc::new(auth_provider),
+            path_matcher: Rc::new(path_matcher),
             user_type: PhantomData,
         }
     }
 }
 
-pub struct AuthMiddlewareInner<S, GetUserTrait, U>
+pub struct AuthMiddlewareInner<S, AuthProvider, U>
 where 
-    GetUserTrait: GetAuthenticatedUserFromRequest<U>,
+    AuthProvider: GetAuthenticatedUserFromRequest<U>,
     U: DeserializeOwned
 {
     service: S,
-    get_user_trait: GetUserTrait,
+    auth_provider: Rc<AuthProvider>,
+    path_matcher: Rc<PathMatcher>,
     user_type: PhantomData<U>
 }
 
-impl<S, B, GetUserTrait, U> Service<ServiceRequest> for AuthMiddlewareInner<S, GetUserTrait, U>
+impl<S, B, AuthProvider, U> Service<ServiceRequest> for AuthMiddlewareInner<S, AuthProvider, U>
 where
     S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
     S::Future: 'static,
     B: 'static,
     U: DeserializeOwned,
-    GetUserTrait: GetAuthenticatedUserFromRequest<U>,
+    AuthProvider: GetAuthenticatedUserFromRequest<U>,
 {
     type Response = ServiceResponse<B>;
     type Error = Error;
@@ -82,11 +105,16 @@ where
     fn call(&self, req: ServiceRequest) -> Self::Future {
         println!("Session authentication {}", req.path());
 
-        let p = req.request().path();
-        match self.get_user_trait.get_authenticated_user(&req.request()) {
-            Ok(_) => println!("User found in get_user_trait"),
-            Err(_) => println!("User not found. Error. No problem when its not an authenticated route"),
+        let request_path = req.request().path();
+        if self.path_matcher.matches(request_path) {
+            match self.auth_provider.get_authenticated_user(&req.request()) {
+                Ok(_) => println!("User found in auth_provider"),
+                Err(_) => println!("User not found. Error. No problem when its not an authenticated route"),
+            }
+        } else {
+            println!("Path is not secured");
         }
+        
         // ToDo:
         // 1. create AuthToken
         // 2. add AuthToken to extensions
@@ -105,25 +133,28 @@ where
 }
 
 
-impl<S, B, GetUserTrait, U> Transform<S, ServiceRequest> for AuthMiddleware<GetUserTrait, U>
+impl<S, B, AuthProvider, U> Transform<S, ServiceRequest> for AuthMiddleware<AuthProvider, U>
 where
     S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
     S::Future: 'static,
     B: 'static,
-    GetUserTrait: GetAuthenticatedUserFromRequest<U> + Clone,
+    AuthProvider: GetAuthenticatedUserFromRequest<U> + Clone,
     U: DeserializeOwned
 {
     type Response = ServiceResponse<B>;
     type Error = Error;
     type InitError = ();
-    type Transform = AuthMiddlewareInner<S, GetUserTrait, U>;
+    type Transform = AuthMiddlewareInner<S, AuthProvider, U>;
     type Future = Ready<Result<Self::Transform, Self::InitError>>;
 
     fn new_transform(&self, service: S) -> Self::Future {
-        println!("Init AuthSessionMiddleware...");
+        let current_t = thread::current();
+        let t_name = current_t.name().unwrap();
+        println!("Init AuthSessionMiddleware. (Thread: '{}')", t_name);
         ready(Ok(AuthMiddlewareInner { 
             service,
-            get_user_trait: self.get_user_trait.clone(), // couldnt we handle this differently?
+            path_matcher: Rc::clone(&self.path_matcher),
+            auth_provider: Rc::clone(&self.auth_provider),
             user_type: PhantomData, 
         }))
     }
@@ -141,10 +172,18 @@ mod tests {
     }
 
     #[test]
-    fn path_matcher_should_match_any_not_in_list_when_excluded() {
+    fn path_matcher_should_match_any_path_that_is_not_in_list_when_excluded() {
         let matcher = PathMatcher::new(vec!["/some-other/route"], true);
 
         assert!(matcher.matches("/api/users/231/edit"));
+    }
+
+    #[test]
+    fn path_matcher_default_should_secure_any_but_login() {
+        let matcher = PathMatcher::default();
+
+        assert!(matcher.matches("/api/users/231/edit"));
+        assert!(!matcher.matches("/login"));
     }
 
 }
