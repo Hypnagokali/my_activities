@@ -1,12 +1,12 @@
-use std::{future::{ready, Ready}, marker::PhantomData, rc::Rc, thread};
+use std::{future::{ready, Ready}, marker::PhantomData, rc::Rc};
 
-use actix_web::{dev::{forward_ready, Service, ServiceRequest, ServiceResponse, Transform}, Error};
+use actix_web::{dev::{forward_ready, Service, ServiceRequest, ServiceResponse, Transform}, Error, HttpMessage};
 use futures::future::LocalBoxFuture;
 use regex::Regex;
 use serde::de::DeserializeOwned;
 use urlencoding::encode;
 
-use crate::GetAuthenticatedUserFromRequest;
+use crate::{AuthToken, GetAuthenticatedUserFromRequest, UnauthorizedError};
 
 const PATH_MATCHER_ANY_ENCODED: &str = "%2A"; // to match *
 
@@ -20,8 +20,10 @@ pub struct PathMatcher {
 
 impl PathMatcher {
 
+    /// All routes are secured except everything starting with /login or register (e.g.: /login?error=true, /login-anything, /register, /register-error)
+    /// **Warning:** currently it would left a routes like /register-private-thing/user/123 unsecure
     pub fn default() -> Self {
-        Self::new(vec!["/login*"], true)
+        Self::new(vec!["/login*", "/register*"], true)
     }
 
     pub fn new(path_list: Vec<&'static str>, exclude: bool) -> Self {
@@ -93,7 +95,7 @@ where
     S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
     S::Future: 'static,
     B: 'static,
-    U: DeserializeOwned,
+    U: DeserializeOwned + 'static,
     AuthProvider: GetAuthenticatedUserFromRequest<U>,
 {
     type Response = ServiceResponse<B>;
@@ -108,20 +110,23 @@ where
         let request_path = req.request().path();
         if self.path_matcher.matches(request_path) {
             match self.auth_provider.get_authenticated_user(&req.request()) {
-                Ok(_) => println!("User found in auth_provider"),
-                Err(_) => println!("User not found. Error. No problem when its not an authenticated route"),
+                Ok(user) => {
+                    let token = AuthToken::new(user);
+                    let mut extensions = req.extensions_mut();
+                    extensions.insert(token);
+                },
+                Err(_) =>  {
+                    // TODO: should use appropriate logging
+                    println!("Authenticated route but no authenticated user found..");
+                    return Box::pin( async {
+                        Err( UnauthorizedError::default().into() )
+                    });
+                }
             }
         } else {
             println!("Path is not secured");
         }
-        
-        // ToDo:
-        // 1. create AuthToken
-        // 2. add AuthToken to extensions
-
-        // let mut ext = req.extensions_mut();
-        // ext.insert();
-        
+                
         let fut = self.service.call(req);
 
         Box::pin(async move {
@@ -139,7 +144,7 @@ where
     S::Future: 'static,
     B: 'static,
     AuthProvider: GetAuthenticatedUserFromRequest<U> + Clone,
-    U: DeserializeOwned
+    U: DeserializeOwned + 'static
 {
     type Response = ServiceResponse<B>;
     type Error = Error;
@@ -148,9 +153,6 @@ where
     type Future = Ready<Result<Self::Transform, Self::InitError>>;
 
     fn new_transform(&self, service: S) -> Self::Future {
-        let current_t = thread::current();
-        let t_name = current_t.name().unwrap();
-        println!("Init AuthSessionMiddleware. (Thread: '{}')", t_name);
         ready(Ok(AuthMiddlewareInner { 
             service,
             path_matcher: Rc::clone(&self.path_matcher),
