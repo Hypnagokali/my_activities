@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use actix_session::{storage::CookieSessionStore, SessionMiddleware};
 use actix_web::{cookie::Key, web::{self, Data}, App, HttpServer};
-use auth_lib::{middleware::{AuthMiddleware, PathMatcher}, session::session_auth::GetUserFromSession};
+use actix_auth_middleware::{middleware::{AuthMiddleware, PathMatcher}, session::session_auth::GetUserFromSession};
 use config::config::Config;
 use controller::{activity_controller, authentication_controller};
 use domain::{auth_api::AuthenticationApi, user::User, user_api::UserApi};
@@ -13,7 +13,6 @@ mod controller;
 mod service;
 mod domain;
 mod error;
-mod application;
 
 
 pub fn config_main_app(cfg: &mut web::ServiceConfig) {

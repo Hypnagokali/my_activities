@@ -1,5 +1,5 @@
 use actix_web::{get, web::ServiceConfig, HttpResponse, Responder};
-use auth_lib::AuthToken;
+use actix_auth_middleware::AuthToken;
 
 use crate::domain::user::User;
 

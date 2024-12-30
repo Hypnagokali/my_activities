@@ -1,5 +1,6 @@
 use std::time::{Duration, SystemTime};
 
+use actix_auth_middleware::session::session_auth::UserSession;
 use actix_session::Session;
 use actix_web::{
     post,
@@ -22,7 +23,7 @@ struct FormLogin {
 #[post("/login")]
 async fn login(
     login_form: web::Form<FormLogin>,
-    session: Session,
+    session: UserSession,
     user_api: Data<dyn UserApi>,
     auth_api: Data<dyn AuthenticationApi>,
 ) -> impl Responder {
@@ -34,23 +35,14 @@ async fn login(
     match user_api.find_by_email(&login_form.email) {
         Ok(user) => {
             if auth_api.is_password_correct(&user, &login_form.password) {
-                session
-                    .insert("user", user)
-                    .expect("Cant create session key 'user'");
-                let now = SystemTime::now();
-                let ttl = now + Duration::from_secs(30 * 60);
-
-                session
-                    .insert("ttl", ttl)
-                    .expect("Cant create session key 'ttl'");
-            } else {
-                return HttpResponse::BadRequest();
-            }
+                session.set_user(user).expect("User could not be set in session");
+                return HttpResponse::Ok();
+            } 
         }
-        Err(_) => return HttpResponse::BadRequest(),
+        Err(_) => println!("{} tried to login but password was incorrect.", login_form.email),
     }
 
-    HttpResponse::Ok()
+    HttpResponse::BadRequest()
 }
 
 pub fn config(cfg: &mut web::ServiceConfig) {
@@ -61,6 +53,8 @@ pub fn config(cfg: &mut web::ServiceConfig) {
 mod tests {
     use std::sync::Arc;
 
+    use actix_auth_middleware::{middleware::{AuthMiddleware, PathMatcher}, session::session_auth::GetUserFromSession};
+
     use actix_web::{
         test::{call_service, init_service, TestRequest},
         web::Data,
@@ -68,7 +62,6 @@ mod tests {
     };
 
     use crate::{
-        application::authentication::AuthMiddleware,
         create_session_middleware,
         domain::{auth_api::{AuthToken, AuthenticationApi}, user::User, user_api::UserApi},
     };
@@ -115,7 +108,7 @@ mod tests {
                 .configure(config)
                 .app_data(user_api_data.clone())
                 .app_data(auth_api_data.clone())
-                .wrap(AuthMiddleware::new())
+                .wrap(AuthMiddleware::<_, User>::new(GetUserFromSession, PathMatcher::default()))
                 .wrap(create_session_middleware(key.clone()))
         }};
     }

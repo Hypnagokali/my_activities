@@ -6,12 +6,13 @@ use serde::de::DeserializeOwned;
 pub mod middleware;
 pub mod session;
 
+/// This trait is used to retrieve the logged in user.
+/// If no user was found (e.g. in Actix-Session) it will return an Err
 pub trait GetAuthenticatedUserFromRequest<U> 
 where 
     U: DeserializeOwned {
     fn get_authenticated_user(&self, req: &HttpRequest) -> Result<U, ()>;
 }
-
 
 pub struct AuthToken<U> 
 where

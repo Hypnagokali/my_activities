@@ -3,6 +3,18 @@
 version = 3
 
 [[package]]
+name = "actix-auth-middleware"
+version = "0.1.0"
+dependencies = [
+ "actix-session",
+ "actix-web",
+ "futures",
+ "regex",
+ "serde",
+ "urlencoding",
+]
+
+[[package]]
 name = "actix-codec"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -308,18 +320,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "auth_lib"
-version = "0.1.0"
-dependencies = [
- "actix-session",
- "actix-web",
- "futures",
- "regex",
- "serde",
- "urlencoding",
-]
-
-[[package]]
 name = "autocfg"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -329,10 +329,10 @@ checksum = "ace50bade8e6234aa140d9a2f552bbee1db4d353f69b8217bc503490fc1a9f26"
 name = "backend"
 version = "0.1.0"
 dependencies = [
+ "actix-auth-middleware",
  "actix-session",
  "actix-web",
  "argon2",
- "auth_lib",
  "dotenvy",
  "futures",
  "serde",
