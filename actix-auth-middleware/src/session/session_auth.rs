@@ -14,15 +14,27 @@ where
     U: DeserializeOwned,
 {
     fn get_authenticated_user(&self, req: &actix_web::HttpRequest) -> Result<U, ()> {
-        let s: Session = req.get_session();
-        let ds = DebuggableSession(s);
-        println!("FromRequest -> Session: {:?}", ds);
+        let s = req.get_session();
 
-        if let Ok(Some(user)) = ds.get::<U>("user") {
-            return Ok(user);
-        } else {
-            Err(())
+        let user = match s.get::<U>("user") {
+            Ok(Some(user)) => user,
+            _ => return Err(()),
+        };
+
+        let ttl = match s.get::<SystemTime>("ttl") {
+            Ok(ttl) => ttl,
+            Err(_) => return Err(()),
+        };
+
+        if let Some(ttl) = ttl {
+            let now = SystemTime::now();
+            if now > ttl {
+                s.purge();
+                return Err(());
+            }            
         }
+
+        Ok(user)
     }
 }
 
@@ -36,14 +48,26 @@ impl UserSession {
             session,
         }
     }
+
     pub fn set_user<U: Serialize>(&self, user: U) -> Result<(), ()> {
         match self.session.insert("user", user) {
             Ok(_) => {},
             Err(_) => return Err(()),
         }
 
-        let now = SystemTime::now();
-        let ttl = now + Duration::from_secs(30 * 60);
+        self.session.remove("ttl");
+
+        Ok(())
+    }
+
+    pub fn set_user_with_ttl<U: Serialize>(&self, user: U, ttl_in_seconds: u64) -> Result<(), ()> {
+        match self.session.insert("user", user) {
+            Ok(_) => {},
+            Err(_) => return Err(()),
+        }
+
+        let now: SystemTime = SystemTime::now();
+        let ttl = now + Duration::from_secs(ttl_in_seconds);
 
         match self.session.insert("ttl", ttl) {
             Ok(_) => return Ok(()),

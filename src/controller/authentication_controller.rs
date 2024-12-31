@@ -35,7 +35,7 @@ async fn login(
     match user_api.find_by_email(&login_form.email) {
         Ok(user) => {
             if auth_api.is_password_correct(&user, &login_form.password) {
-                session.set_user(user).expect("User could not be set in session");
+                session.set_user_with_ttl(user, 30 * 60).expect("User could not be set in session");
                 return HttpResponse::Ok();
             } 
         }

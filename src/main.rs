@@ -30,6 +30,7 @@ pub fn config_main_app(cfg: &mut web::ServiceConfig) {
 
 
 pub fn create_session_middleware (key: Key) -> SessionMiddleware<CookieSessionStore> {
+    // TODO: set Cookie TTL with SessionLifecycle
     SessionMiddleware::builder(CookieSessionStore::default(), key)
                 .cookie_name("sessionId".to_string())
                 .cookie_http_only(true)
