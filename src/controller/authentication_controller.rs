@@ -1,10 +1,7 @@
-use std::time::{Duration, SystemTime};
-
-use actix_auth_middleware::session::session_auth::UserSession;
-use actix_session::Session;
+use auth_middleware_for_actix_web::session::session_auth::UserSession;
 use actix_web::{
     post,
-    web::{self, Data},
+    web::{Form, Data, ServiceConfig},
     HttpResponse, Responder,
 };
 use serde::{Deserialize, Serialize};
@@ -22,7 +19,7 @@ struct FormLogin {
 
 #[post("/login")]
 async fn login(
-    login_form: web::Form<FormLogin>,
+    login_form: Form<FormLogin>,
     session: UserSession,
     user_api: Data<dyn UserApi>,
     auth_api: Data<dyn AuthenticationApi>,
@@ -32,20 +29,22 @@ async fn login(
         login_form.email, login_form.password
     );
 
-    match user_api.find_by_email(&login_form.email) {
+    match user_api.find_by_email(&login_form.email).await {
         Ok(user) => {
-            if auth_api.is_password_correct(&user, &login_form.password) {
-                session.set_user_with_ttl(user, 30 * 60).expect("User could not be set in session");
+            if auth_api.is_password_correct(&user, &login_form.password).await {
+                session.set_user(user).expect("User could not be set in session");
                 return HttpResponse::Ok();
-            } 
+            } else {
+                println!("{} tried to login but password was incorrect.", login_form.email)
+            }
         }
-        Err(_) => println!("{} tried to login but password was incorrect.", login_form.email),
+        Err(_) => println!("{} tried to login but user not found.", login_form.email),
     }
 
     HttpResponse::BadRequest()
 }
 
-pub fn config(cfg: &mut web::ServiceConfig) {
+pub fn config(cfg: &mut ServiceConfig) {
     cfg.service(login);
 }
 
@@ -53,7 +52,8 @@ pub fn config(cfg: &mut web::ServiceConfig) {
 mod tests {
     use std::sync::Arc;
 
-    use actix_auth_middleware::{middleware::{AuthMiddleware, PathMatcher}, session::session_auth::GetUserFromSession};
+    use async_trait::async_trait;
+    use auth_middleware_for_actix_web::{middleware::{AuthMiddleware, PathMatcher}, session::session_auth::GetUserFromSession};
 
     use actix_web::{
         test::{call_service, init_service, TestRequest},
@@ -70,8 +70,9 @@ mod tests {
 
     struct TestAuth;
 
+    #[async_trait]
     impl AuthenticationApi for TestAuth {
-        fn is_password_correct(&self, _user: &crate::domain::user::User, password: &str) -> bool {
+        async fn is_password_correct(&self, _user: &crate::domain::user::User, password: &str) -> bool {
             password == "test123"
         }
 
@@ -86,8 +87,9 @@ mod tests {
     }
 
     struct TestUserService;
+    #[async_trait]
     impl UserApi for TestUserService {
-        fn find_by_email(
+        async fn find_by_email(
             &self,
             _email: &str,
         ) -> Result<crate::domain::user::User, crate::error::errors::NotFoundError> {

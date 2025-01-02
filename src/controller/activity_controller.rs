@@ -1,5 +1,6 @@
-use actix_web::{get, web::ServiceConfig, HttpResponse, Responder};
-use actix_auth_middleware::AuthToken;
+use actix_web::{get, web::{Query, ServiceConfig}, HttpResponse, Responder};
+use auth_middleware_for_actix_web::AuthToken;
+use serde::Deserialize;
 
 use crate::domain::user::User;
 

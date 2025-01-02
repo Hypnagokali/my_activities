@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use async_trait::async_trait;
+
 use crate::{domain::{user::User, user_api::UserApi}, error::errors::NotFoundError};
 
 pub struct UserService {
@@ -18,8 +20,9 @@ impl UserService {
     }
 }
 
+#[async_trait]
 impl UserApi for UserService {
-    fn find_by_email(&self, email: &str) -> Result<User, NotFoundError> {
+    async fn find_by_email(&self, email: &str) -> Result<User, NotFoundError> {
         match self.users.get(email.to_lowercase().trim()) {
             Some(user) => Ok(user.clone()),
             None => Err(NotFoundError::new("User not found")),

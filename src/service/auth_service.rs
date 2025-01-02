@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use argon2::{password_hash::{rand_core::OsRng, SaltString}, Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
+use async_trait::async_trait;
 
 use crate::domain::{auth_api::{AuthToken, AuthenticationApi}, user::User};
 
@@ -27,8 +28,9 @@ impl AuthenticationService {
     }
 }
 
+#[async_trait]
 impl AuthenticationApi for AuthenticationService {
-    fn is_password_correct(&self, user: &User, password: &str) -> bool {
+    async fn is_password_correct(&self, user: &User, password: &str) -> bool {
         match self.user_pass_map.get(&user.id) {
             Some(hashed_user_pass) => {
                 let argon2 = Argon2::default();
@@ -58,22 +60,22 @@ mod tests {
     use super::AuthenticationService;
 
 
-    #[test]
-    fn should_return_true_when_password_correct() {
+    #[tokio::test]
+    async fn should_return_true_when_password_correct() {
         let auth = AuthenticationService::new();
 
         let user = User::new(1, "test@example.org", "Hans");
 
-        assert!(auth.is_password_correct(&user, "test123"), "The password should match");
+        assert!(auth.is_password_correct(&user, "test123").await, "The password should match");
     }
 
-    #[test]
-    fn should_return_false_when_password_incorrect() {
+    #[tokio::test]
+    async fn should_return_false_when_password_incorrect() {
         let auth = AuthenticationService::new();
 
         let user = User::new(1, "test@example.org", "Hans");
 
-        assert!(!auth.is_password_correct(&user, "some123"), "Password is not correct. This should return false");
+        assert!(!auth.is_password_correct(&user, "some123").await, "Password is not correct. This should return false");
     }
 
 }

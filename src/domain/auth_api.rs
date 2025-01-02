@@ -1,3 +1,5 @@
+use async_trait::async_trait;
+
 use super::user::User;
 
 pub trait AuthToken {
@@ -5,8 +7,9 @@ pub trait AuthToken {
     fn get_authenticated_user(&self) -> Result<User, ()>;
 }
 
+#[async_trait]
 pub trait AuthenticationApi: Send + Sync {
-    fn is_password_correct(&self, user: &User, password: &str) -> bool; 
+    async fn is_password_correct(&self, user: &User, password: &str) -> bool; 
     fn is_authenticated(&self, auth: &dyn AuthToken) -> bool;
     fn get_authenticated_user(&self, auth: &dyn AuthToken) -> Result<User, ()>;
 }
