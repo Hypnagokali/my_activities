@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use actix_session::{config::{PersistentSession, SessionLifecycle}, storage::CookieSessionStore, SessionMiddleware};
-use actix_web::{cookie::Key, get, web::{self, Data}, App, HttpResponse, HttpServer, Responder};
-use auth_middleware_for_actix_web::{middleware::{AuthMiddleware, PathMatcher}, session::session_auth::GetUserFromSession, AuthToken};
+use actix_web::{cookie::Key, web::{self, Data}, App, HttpServer};
+use auth_middleware_for_actix_web::{middleware::{AuthMiddleware, PathMatcher}, session::session_auth::GetUserFromSession};
 use config::config::Config;
 use controller::{activity_controller, authentication_controller};
 use domain::{auth_api::AuthenticationApi, user::User, user_api::UserApi};
@@ -42,29 +42,16 @@ pub fn create_session_middleware (key: Key) -> SessionMiddleware<CookieSessionSt
             
 }
 
-#[get("/secured-route")]
-pub async fn secured_route(token: AuthToken<User>) -> impl Responder {
-    HttpResponse::Ok().body(format!("Request from user: {}", token.get_authenticated_user().email))
-}
-
-
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     dotenvy::dotenv().ok();
     let config = Config::from_env();
     let encrypt_key_for_cookies = Key::generate();
 
-    
-    // specify routes that are to be secured
-    let path_matcher = PathMatcher::new(vec!["/admin", "/private-page"], false);
-    // or specify routes that are excluded from authentication
-    let path_matcher = PathMatcher::new(vec!["/login", "/public", "/everyone"], true);
-
     let server = HttpServer::new(move || {
         App::new()
         .configure(config_main_app)
-        .service(secured_route)
-        .wrap(AuthMiddleware::<GetUserFromSession, User>::new(GetUserFromSession, path_matcher.clone()))
+        .wrap(AuthMiddleware::<GetUserFromSession, User>::new(GetUserFromSession, PathMatcher::default()))
         .wrap(create_session_middleware(encrypt_key_for_cookies.clone()))
         
     })

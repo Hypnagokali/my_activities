@@ -1,10 +1,14 @@
 [package]
-name = "actix-auth-middleware"
+name = "auth-middleware-for-actix-web"
+authors = ["Stefan Simon <stefan.j.c.simon@gmail.com>"]
+keywords = ["actix", "actix-web", "middleware", "auth", "authentication", "session", "web"]
+exclude = [".gitignore"]
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
 actix-web="4"
+log = "0.4.22"
 serde = { version = "1.0.216", features = ["derive"]}
 actix-session = { version = "0.10.1", features = ["cookie-session"]}
 futures = "0.3.31"

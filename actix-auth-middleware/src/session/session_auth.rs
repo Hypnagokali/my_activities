@@ -1,4 +1,4 @@
-use std::{fmt::Debug, future::{ready, Ready}, ops::Deref, time::{Duration, SystemTime}};
+use std::{fmt::Debug, future::{ready, Ready}, ops::Deref};
 
 use actix_session::{Session, SessionExt};
 use actix_web::{Error, FromRequest, HttpRequest};
@@ -20,19 +20,6 @@ where
             Ok(Some(user)) => user,
             _ => return Err(()),
         };
-
-        let ttl = match s.get::<SystemTime>("ttl") {
-            Ok(ttl) => ttl,
-            Err(_) => return Err(()),
-        };
-
-        if let Some(ttl) = ttl {
-            let now = SystemTime::now();
-            if now > ttl {
-                s.purge();
-                return Err(());
-            }            
-        }
 
         Ok(user)
     }
@@ -59,21 +46,6 @@ impl UserSession {
 
         Ok(())
     }
-
-    pub fn set_user_with_ttl<U: Serialize>(&self, user: U, ttl_in_seconds: u64) -> Result<(), ()> {
-        match self.session.insert("user", user) {
-            Ok(_) => {},
-            Err(_) => return Err(()),
-        }
-
-        let now: SystemTime = SystemTime::now();
-        let ttl = now + Duration::from_secs(ttl_in_seconds);
-
-        match self.session.insert("ttl", ttl) {
-            Ok(_) => return Ok(()),
-            Err(_) => Err(()),
-        }
-    }
 }
 
 impl FromRequest for UserSession {
@@ -86,6 +58,10 @@ impl FromRequest for UserSession {
     }
 }
 
+/// For Debugging purposes. May be removed in the future.
+/// Example: 
+/// let ds = DebuggableSession(session);
+/// println!("{?:}", ds);
 pub struct DebuggableSession(pub Session);
 
 impl Deref for DebuggableSession {
