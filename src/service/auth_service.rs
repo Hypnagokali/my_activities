@@ -1,16 +1,18 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use argon2::{password_hash::{rand_core::OsRng, SaltString}, Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
 use async_trait::async_trait;
+use authfix::login::LoadUserService;
 
-use crate::domain::{auth_api::{AuthToken, AuthenticationApi}, user::User};
+use crate::domain::{auth_api::AuthenticationApi, user::User, user_api::UserApi};
 
-pub struct AuthenticationService {
+pub struct AuthenticationService<U: UserApi> {
     user_pass_map: HashMap<i32, String>,
+    user_api: Arc<U>
 }
 
-impl AuthenticationService {
-    pub fn new() -> Self {
+impl<U: UserApi> AuthenticationService<U> {
+    pub fn new(user_api: Arc<U>) -> Self {
         let mut user_pass_map = HashMap::new();
         
         let salt = SaltString::generate(&mut OsRng);
@@ -24,12 +26,13 @@ impl AuthenticationService {
     
         AuthenticationService {
             user_pass_map,
+            user_api,
         }
     }
 }
 
 #[async_trait]
-impl AuthenticationApi for AuthenticationService {
+impl<U: UserApi> AuthenticationApi for AuthenticationService<U> {
     async fn is_password_correct(&self, user: &User, password: &str) -> bool {
         match self.user_pass_map.get(&user.id) {
             Some(hashed_user_pass) => {
@@ -43,26 +46,57 @@ impl AuthenticationApi for AuthenticationService {
             None => false,
         }
     }
+}
 
-    fn is_authenticated(&self, auth: &dyn AuthToken) -> bool {
-        auth.is_authenticated()
+impl<U: UserApi> LoadUserService for AuthenticationService<U> {
+    type User = User;
+
+    fn load_user(
+        &self,
+        login_token: &authfix::login::LoginToken,
+    ) -> futures::future::LocalBoxFuture<'_, Result<Self::User, authfix::login::LoadUserError>> {
+        let email = login_token.username.clone();
+        let password = login_token.password.clone();
+        Box::pin(async move {
+            match self.user_api.find_by_email(&email).await {
+                Ok(user) => {
+                    if self.is_password_correct(&user, &password).await {
+                        Ok(user)
+                    } else {
+                        Err(authfix::login::LoadUserError::LoginFailed)
+                    }
+                },
+                Err(_) => Err(authfix::login::LoadUserError::LoginFailed),
+            }
+        })
+
     }
 
-    fn get_authenticated_user(&self, auth: &dyn AuthToken) -> Result<User, ()> {
-        auth.get_authenticated_user()
+    fn on_success_handler(
+        &self,
+        req: &actix_web::HttpRequest,
+        user: &Self::User,
+    ) -> futures::future::LocalBoxFuture<'_, Result<(), authfix::login::HandlerError>> {
+        todo!()
+    }
+
+    fn on_error_handler(&self, req: &actix_web::HttpRequest) -> futures::future::LocalBoxFuture<'_, Result<(), authfix::login::HandlerError>> {
+        todo!()
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::domain::{auth_api::AuthenticationApi, user::User};
+    use std::sync::Arc;
+
+    use crate::{domain::{auth_api::AuthenticationApi, user::User}, service::user_service::UserService};
 
     use super::AuthenticationService;
 
 
     #[tokio::test]
     async fn should_return_true_when_password_correct() {
-        let auth = AuthenticationService::new();
+        let auth = AuthenticationService::new(Arc::new(UserService::new()));
 
         let user = User::new(1, "test@example.org", "Hans");
 
@@ -71,7 +105,7 @@ mod tests {
 
     #[tokio::test]
     async fn should_return_false_when_password_incorrect() {
-        let auth = AuthenticationService::new();
+        let auth = AuthenticationService::new(Arc::new(UserService::new()));
 
         let user = User::new(1, "test@example.org", "Hans");
 

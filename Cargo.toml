@@ -4,12 +4,12 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-auth-middleware-for-actix-web = { path = "actix-auth-middleware" }
+authfix = { path = "authfix" }
 dotenvy = "0.15.7"
-actix-web="4"
+actix-web="4.10.2"
 serde = { version = "1.0.215", features = ["derive"]}
 actix-session = { version = "0.10.1", features = ["cookie-session"]}
 argon2 = { version = "0.5.3", features = ["password-hash"]}
 futures = "0.3.31"
-tokio = { version = "1.42.0", features = ["full"] }
-async-trait = "0.1.83"
+tokio = { version = "1.44.1", features = ["full"] }
+async-trait = "0.1.88"
