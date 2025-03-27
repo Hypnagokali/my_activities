@@ -1,10 +1,11 @@
 use std::sync::Arc;
 
 use actix_session::{config::{PersistentSession, SessionLifecycle}, storage::CookieSessionStore, SessionMiddleware};
-use actix_web::{cookie::Key, web::{self, Data}, App, HttpServer};
+use actix_web::{cookie::Key, web::{self, Data}, HttpServer};
+use authfix::{middleware::{AuthMiddleware, PathMatcher}, session::{handlers::SessionLoginHandler, session_auth::{session_login_factory, SessionAuthProvider}}};
 use config::config::Config;
 use controller::activity_controller;
-use domain::{auth_api::AuthenticationApi, user, user_api::UserApi};
+use domain::{auth_api::AuthenticationApi, user_api::UserApi};
 use service::{auth_service::AuthenticationService, user_service::UserService};
 
 mod config;
@@ -12,6 +13,7 @@ mod controller;
 mod service;
 mod domain;
 mod error;
+mod app_factory;
 
 
 pub fn config_main_app(cfg: &mut web::ServiceConfig) {
@@ -27,18 +29,16 @@ pub fn config_main_app(cfg: &mut web::ServiceConfig) {
         .app_data(auth_api_data.clone());
 }
 
-
 pub fn create_session_middleware (key: Key) -> SessionMiddleware<CookieSessionStore> {
     let persistent_session = PersistentSession::default();
     let lc = SessionLifecycle::PersistentSession(persistent_session);
     SessionMiddleware::builder(CookieSessionStore::default(), key)
                 .cookie_name("sessionId".to_string())
                 .cookie_http_only(true)
-                .cookie_same_site(actix_web::cookie::SameSite::None) // for development
-                .cookie_secure(false)
+                .cookie_same_site(actix_web::cookie::SameSite::Lax) 
+                .cookie_secure(true)
                 .session_lifecycle(lc)
-                .build()
-            
+                .build()    
 }
 
 #[actix_web::main]
@@ -48,12 +48,7 @@ async fn main() -> std::io::Result<()> {
     let encrypt_key_for_cookies = Key::generate();
 
     let server = HttpServer::new(move || {
-        App::new()
-        .configure(config_main_app)
-        // TODO: wrap AuthMiddleware
-        // .wrap(AuthMiddleware::<GetUserFromSession, User>::new(GetUserFromSession, PathMatcher::default()))
-        .wrap(create_session_middleware(encrypt_key_for_cookies.clone()))
-        
+        app_factory::create_app(encrypt_key_for_cookies.clone())
     })
     .bind((config.host.clone(), config.port))?
     .run();
