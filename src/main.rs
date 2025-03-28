@@ -2,10 +2,9 @@ use std::sync::Arc;
 
 use actix_session::{config::{PersistentSession, SessionLifecycle}, storage::CookieSessionStore, SessionMiddleware};
 use actix_web::{cookie::Key, web::{self, Data}, HttpServer};
-use authfix::{middleware::{AuthMiddleware, PathMatcher}, session::{handlers::SessionLoginHandler, session_auth::{session_login_factory, SessionAuthProvider}}};
 use config::config::Config;
 use controller::activity_controller;
-use domain::{auth_api::AuthenticationApi, user_api::UserApi};
+use domain::auth_api::AuthenticationApi;
 use service::{auth_service::AuthenticationService, user_service::UserService};
 
 mod config;

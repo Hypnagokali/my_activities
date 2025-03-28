@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use actix_files::Files;
 use actix_session::{config::{PersistentSession, SessionLifecycle}, storage::CookieSessionStore, SessionMiddleware};
 use actix_web::{body::MessageBody, cookie::Key, dev::{ServiceFactory, ServiceRequest, ServiceResponse}, web::Data, App, Error};
 use authfix::{middleware::{AuthMiddleware, PathMatcher}, session::{handlers::SessionLoginHandler, session_auth::{session_login_factory, SessionAuthProvider}}};
@@ -33,9 +34,10 @@ impl ServiceFactory<
 
     session_login_factory(
         SessionLoginHandler::new(AuthenticationService::new(Arc::clone(&user_service))), 
-        AuthMiddleware::new(SessionAuthProvider, PathMatcher::default()), 
+        AuthMiddleware::new(SessionAuthProvider, PathMatcher::new(vec!["/login/*", "/web/index.html"], true)), 
         create_test_session_middleware(cookie_key)
     )
+    .service(Files::new("/web", "./static"))
     .app_data(user_api_data.clone())
     .configure(activity_controller::config)        
 }
