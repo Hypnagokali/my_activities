@@ -1,1 +1,9 @@
-/* You can add global styles to this file, and also import other style files */
+@import 'tailwindcss';
+
+.btn-primary {
+    @apply px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600
+}
+
+.std-input {
+    @apply outline-0 bg-gray-50 border border-gray-300 rounded-lg focus-visible:ring-blue-500 focus-visible:border-blue-500 block w-full p-1
+}
