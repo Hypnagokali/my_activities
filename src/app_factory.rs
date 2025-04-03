@@ -14,7 +14,7 @@ pub fn create_test_session_middleware (key: Key) -> SessionMiddleware<CookieSess
     SessionMiddleware::builder(CookieSessionStore::default(), key)
                 .cookie_name("sessionId".to_string())
                 .cookie_http_only(true)
-                .cookie_same_site(actix_web::cookie::SameSite::None)
+                .cookie_same_site(actix_web::cookie::SameSite::Lax)
                 .cookie_secure(false)
                 .session_lifecycle(lc)
                 .build()    
@@ -48,7 +48,7 @@ impl ServiceFactory<
 
     session_login_factory(
         login_handler,
-        AuthMiddleware::new(SessionAuthProvider, PathMatcher::new(vec!["/api/login/*","/api/test", "/web/index.html"], true)), 
+        AuthMiddleware::new(SessionAuthProvider, PathMatcher::new(vec!["/api/login*","/api/test", "/web/index.html"], true)), 
         create_test_session_middleware(cookie_key)
     )
     .service(Files::new("/web", "./static"))

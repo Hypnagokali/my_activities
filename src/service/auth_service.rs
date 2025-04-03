@@ -34,6 +34,7 @@ impl<U: UserApi> AuthenticationService<U> {
 #[async_trait]
 impl<U: UserApi> AuthenticationApi for AuthenticationService<U> {
     async fn is_password_correct(&self, user: &User, password: &str) -> bool {
+        println!("Check if password correct!");
         match self.user_pass_map.get(&user.id) {
             Some(hashed_user_pass) => {
                 let argon2 = Argon2::default();
@@ -74,14 +75,19 @@ impl<U: UserApi> LoadUserService for AuthenticationService<U> {
 
     fn on_success_handler(
         &self,
-        req: &actix_web::HttpRequest,
+        _req: &actix_web::HttpRequest,
         user: &Self::User,
     ) -> futures::future::LocalBoxFuture<'_, Result<(), authfix::login::HandlerError>> {
-        todo!()
+        println!("Success: user -> {}", user.name);
+        Box::pin(async {
+            Ok(())
+        })
     }
 
-    fn on_error_handler(&self, req: &actix_web::HttpRequest) -> futures::future::LocalBoxFuture<'_, Result<(), authfix::login::HandlerError>> {
-        todo!()
+    fn on_error_handler(&self, _req: &actix_web::HttpRequest) -> futures::future::LocalBoxFuture<'_, Result<(), authfix::login::HandlerError>> {
+        Box::pin(async {
+            Ok(())
+        })
     }
 }
 
