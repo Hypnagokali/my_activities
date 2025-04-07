@@ -14,3 +14,4 @@ argon2 = { version = "0.5.3", features = ["password-hash"]}
 futures = "0.3.31"
 tokio = { version = "1.44.1", features = ["full"] }
 async-trait = "0.1.88"
+rusqlite = { version = "0.34.0", features = ["bundled"]}
