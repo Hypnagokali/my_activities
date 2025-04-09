@@ -1,31 +1,18 @@
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
-use argon2::{password_hash::{rand_core::OsRng, SaltString}, Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
+use argon2::{Argon2, PasswordHash, PasswordVerifier};
 use async_trait::async_trait;
 use authfix::login::LoadUserService;
 
 use crate::domain::{auth_api::AuthenticationApi, user::User, user_api::UserApi};
 
 pub struct AuthenticationService<U: UserApi> {
-    user_pass_map: HashMap<i32, String>,
     user_api: Arc<U>
 }
 
 impl<U: UserApi> AuthenticationService<U> {
     pub fn new(user_api: Arc<U>) -> Self {
-        let mut user_pass_map = HashMap::new();
-        
-        let salt = SaltString::generate(&mut OsRng);
-
-        match Argon2::default().hash_password("test123".as_bytes(), &salt) {
-            Ok(hashed) => {
-                user_pass_map.insert(1, hashed.to_string());                
-            },
-            Err(_) => eprintln!("Cannot create Users passwort (init error)"),
-        };
-    
         AuthenticationService {
-            user_pass_map,
             user_api,
         }
     }
@@ -35,16 +22,23 @@ impl<U: UserApi> AuthenticationService<U> {
 impl<U: UserApi> AuthenticationApi for AuthenticationService<U> {
     async fn is_password_correct(&self, user: &User, password: &str) -> bool {
         println!("Check if password correct!");
-        match self.user_pass_map.get(&user.id) {
-            Some(hashed_user_pass) => {
+        match self.user_api.find_credentials_by_user_id(user.id).await {
+            Ok(credentials) => {
                 let argon2 = Argon2::default();
-                let pass_hash = PasswordHash::new(&hashed_user_pass).expect("Could not create PasswordHash from &str");
-                match argon2.verify_password(password.as_bytes(), &pass_hash) {
-                    Ok(_) => true,
-                    Err(_) => false,
+                match PasswordHash::new(&credentials.password)  {
+                    Ok(hash) => {
+                        match argon2.verify_password(password.as_bytes(), &hash) {
+                            Ok(_) => true,
+                            Err(_) => false,
+                        }
+                    },
+                    Err(_) => {
+                        eprintln!("Could not create PasswordHash from credentials");
+                        false
+                    },
                 }
             },
-            None => false,
+            Err(_) => false,
         }
     }
 }
@@ -95,25 +89,29 @@ impl<U: UserApi> LoadUserService for AuthenticationService<U> {
 mod tests {
     use std::sync::Arc;
 
-    use crate::{domain::{auth_api::AuthenticationApi, user::User}, service::user_service::UserService};
+    use crate::{config::db::DbConfig, domain::{auth_api::AuthenticationApi, user::User}, service::user_service::UserService};
 
     use super::AuthenticationService;
 
 
     #[tokio::test]
     async fn should_return_true_when_password_correct() {
-        let auth = AuthenticationService::new(Arc::new(UserService::new()));
+        let db_config = DbConfig::new(":memory");
+        let user_service = Arc::new(UserService::new(Arc::new(db_config)));
+        let auth = AuthenticationService::new(Arc::clone(&user_service));
 
-        let user = User::new(1, "test@example.org", "Hans");
+        let user = User::new(1, "test@example.org".to_owned(), "Hans".to_owned());
 
         assert!(auth.is_password_correct(&user, "test123").await, "The password should match");
     }
 
     #[tokio::test]
     async fn should_return_false_when_password_incorrect() {
-        let auth = AuthenticationService::new(Arc::new(UserService::new()));
+        let db_config = DbConfig::new(":memory");
+        let user_service = Arc::new(UserService::new(Arc::new(db_config)));
+        let auth = AuthenticationService::new(Arc::clone(&user_service));
 
-        let user = User::new(1, "test@example.org", "Hans");
+        let user = User::new(1, "test@example.org".to_owned(), "Hans".to_owned());
 
         assert!(!auth.is_password_correct(&user, "some123").await, "Password is not correct. This should return false");
     }

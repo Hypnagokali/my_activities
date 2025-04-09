@@ -6,7 +6,7 @@ use actix_web::{body::MessageBody, cookie::Key, dev::{ServiceFactory, ServiceReq
 use authfix::{config::Routes, middleware::{AuthMiddleware, PathMatcher}, session::{handlers::SessionLoginHandler, session_auth::{session_login_factory, SessionAuthProvider}}};
 use serde::Serialize;
 
-use crate::{controller::{activity_controller, root_controller}, domain::user_api::UserApi, service::{auth_service::AuthenticationService, user_service::UserService}};
+use crate::{config::db::DbConfig, controller::{activity_controller, root_controller}, domain::user_api::UserApi, service::{auth_service::AuthenticationService, user_service::UserService}};
 
 pub fn create_test_session_middleware (key: Key) -> SessionMiddleware<CookieSessionStore> {
     let persistent_session = PersistentSession::default();
@@ -39,8 +39,10 @@ impl ServiceFactory<
     InitError = (),
     Error = Error,
 >> {
-    let user_service= Arc::new(UserService::new());
+    let db_config = DbConfig::new("activities_db.sqlite3");
+    let user_service= Arc::new(UserService::new(Arc::new(db_config)));
     let user_api: Arc<dyn UserApi> = Arc::clone(&user_service) as Arc<dyn UserApi>;
+
     let user_api_data = Data::from(user_api);
 
     let mut login_handler = SessionLoginHandler::new(AuthenticationService::new(Arc::clone(&user_service)));

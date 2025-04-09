@@ -8,18 +8,28 @@ pub struct User {
 }
 
 impl User {
-    pub fn test_user() -> Self {
-        User {
-            id: 1,
-            email: "test@example.org".to_owned(),
-            name: "Hans".to_owned(),
-        }
-    }
-    pub fn new(id: i32, email: &str, name: &str) -> Self {
+    pub fn new(id: i32, email: String, name: String) -> Self {
         User {
             id,
-            email: email.to_owned(),
-            name: name.to_owned(),
+            email: email,
+            name: name,
+        }
+    }
+}
+
+#[allow(dead_code)]
+pub struct Credentials {
+    pub id: i32,
+    pub password: String,
+    pub user_id: i32,
+
+}
+impl Credentials {
+    pub fn new(id: i32, password: String, user_id: i32) -> Self {
+        Self {
+            id,
+            password,
+            user_id
         }
     }
 }
