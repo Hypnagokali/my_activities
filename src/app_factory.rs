@@ -6,7 +6,7 @@ use actix_web::{body::MessageBody, cookie::Key, dev::{ServiceFactory, ServiceReq
 use authfix::{config::Routes, middleware::{AuthMiddleware, PathMatcher}, session::{handlers::SessionLoginHandler, session_auth::{session_login_factory, SessionAuthProvider}}};
 use serde::Serialize;
 
-use crate::{config::db::DbConfig, controller::{activity_controller, root_controller}, domain::user_api::UserApi, service::{auth_service::AuthenticationService, user_service::UserService}};
+use crate::{config::db::DbConfig, controller::{activity_controller, qrcode_controller, root_controller}, domain::user_api::UserApi, service::{auth_service::AuthenticationService, user_service::UserService}};
 
 pub fn create_test_session_middleware (key: Key) -> SessionMiddleware<CookieSessionStore> {
     let persistent_session = PersistentSession::default();
@@ -58,6 +58,7 @@ impl ServiceFactory<
             .service(test_endpoint)
             .configure(activity_controller::config)
             .configure(root_controller::config)
+            .configure(qrcode_controller::config)
     )
     .service(Files::new("/web", "./static"))
     .app_data(user_api_data.clone())
