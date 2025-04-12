@@ -3,10 +3,12 @@ use authfix::multifactor::google_auth::TotpSecretGenerator;
 
 #[get("/qrcode")]
 async fn get_qrcode() -> impl Responder {
-    let generator = TotpSecretGenerator::new();
-    let secret = generator.create_secret();
+    let generator = TotpSecretGenerator::new("MyActivities", "test@example.org");
+    
+    // ToDo: save in session
+    let _secret = generator.get_secret();
 
-    let qrcode = TotpSecretGenerator::create_qr_code(&secret, "MyActivities", "test@example.org").unwrap(); 
+    let qrcode = generator.get_qr_code().unwrap();
 
     HttpResponse::Ok()
         .insert_header(ContentType(mime::IMAGE_SVG))
