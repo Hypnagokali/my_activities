@@ -5,7 +5,6 @@ use authfix::multifactor::google_auth::TotpSecretGenerator;
 async fn get_qrcode() -> impl Responder {
     let generator = TotpSecretGenerator::new("MyActivities", "test@example.org");
     
-    // ToDo: save in session
     let _secret = generator.get_secret();
 
     let qrcode = generator.get_qr_code().unwrap();

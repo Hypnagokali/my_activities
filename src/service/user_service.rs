@@ -81,6 +81,44 @@ impl UserApi for UserService {
         
     }
 
+    async fn save_credentials(&self, credentials: Credentials) -> Result<Credentials, UserUpdateError> {
+        if credentials.user_id == 0 {
+            Err(UserUpdateError::new("Cannot save credentials if user_id is 0"))
+        } else {
+            let db = self.db_config.get_database().to_owned();
+
+            let mfa_config = match credentials.mfa_config {
+                Some(mfa_config) => {
+                    let secret = match mfa_config.secret {
+                        Some(secret) => secret,
+                        None => "null".to_owned(),
+                    };
+
+                    (mfa_config.mfa_id, secret)
+                },
+                None => todo!(),
+            };
+
+            let command: &str = match credentials.id > 0 {
+                true => "UPDATE credentials SET password = ?1, mfa_id = ?2, mfa_secret = ?3 WHERE id = ?4",
+                false => "INSERT INTO credentials (password, mfa_id, mfa_secret)",
+            };
+
+            let exec: Result<(), rusqlite::Error> = tokio::task::spawn_blocking(move || {
+                let conn = Connection::open(db)?;    
+                conn.execute(command, (credentials.password, mfa_config.0, mfa_config.1))?;
+
+                Ok::<(), rusqlite::Error>(())
+            }).await?;
+
+            match exec {
+                Ok(_) => self.find_credentials_by_user_id(credentials.user_id).await
+                .map_err(|e| UserUpdateError::new(&format!("Cannot load credentials after save: {}", e))),
+                Err(_) => Err(UserUpdateError::new("Cannot insert or update credentials")),
+            }
+        }   
+    }
+
     async fn find_credentials_by_user_id(&self, user_id: i32) -> Result<Credentials, QueryUserError> {
         let db = self.db_config.get_database().to_owned();
         tokio::task::spawn_blocking(move || {

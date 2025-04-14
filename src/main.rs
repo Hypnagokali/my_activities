@@ -50,6 +50,8 @@ pub fn create_db(db_config: &DbConfig) {
         CREATE TABLE IF NOT EXISTS credentials (
             id INTEGER PRIMARY KEY, 
             password TEXT,
+            mfa_id TEXT,
+            mfa_secret TEXT,
             user_id INTEGER UNIQUE,
             FOREIGN KEY (user_id) REFERENCES users(id)
         );
