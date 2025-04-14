@@ -1,3 +1,4 @@
 /target
 .env
 /__backup
+*.sqlite3
