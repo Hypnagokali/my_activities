@@ -138,7 +138,7 @@ impl UserApi for UserService {
                         mfa_config = Some(MfaConfig::new(&mfa_id));
                     }
                 }
-                
+
                 let mut creds = Credentials::new(row.get(0)?, row.get(1)?, row.get(4)?);
                 if let Some(mfa_config) = mfa_config {
                     creds.set_mfa(mfa_config);
@@ -153,15 +153,16 @@ impl UserApi for UserService {
 mod user_service_tests {
     use std::{fs::remove_file, sync::Arc};
 
+    use rusqlite::{Connection, OpenFlags};
+
     use crate::{config::db::DbConfig, create_db, domain::{user::{MfaConfig, User}, user_api::UserApi}, service::user_service::UserService};
 
 
     #[tokio::test]
     async fn should_be_able_to_save_credentials() {
-        // ToDo: user in memory config
-        let temp_db = "should_be_able_to_save_credentials.sqlite3";
+        let temp_db = "file:user_service_test?mode=memory&cache=shared";
         let db_config = DbConfig::new(temp_db);
-        create_db(&db_config);
+        let _db = create_db(&db_config);
 
         // Arrange
         let user_service = UserService::new(Arc::new(db_config));
@@ -176,9 +177,6 @@ mod user_service_tests {
 
         // Assert
         creds = user_service.find_credentials_by_user_id(saved_user.id).await.unwrap();
-
-        // clean db
-        remove_file(temp_db).unwrap();
 
         assert!(creds.mfa_config.is_some());
         let mfa_config = creds.mfa_config.unwrap();

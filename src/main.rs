@@ -5,7 +5,7 @@ use actix_web::{cookie::Key, HttpServer};
 use argon2::{password_hash::{rand_core::OsRng, SaltString}, Argon2, PasswordHasher};
 use config::{config::Config, db::DbConfig};
 use domain::{user::User, user_api::UserApi};
-use rusqlite::Connection;
+use rusqlite::{Connection, OpenFlags};
 use service::user_service::UserService;
 
 mod config;
@@ -42,7 +42,7 @@ pub fn create_session_middleware (key: Key) -> SessionMiddleware<CookieSessionSt
                 .build()    
 }
 
-pub fn create_db(db_config: &DbConfig) {
+pub fn create_db(db_config: &DbConfig) -> Connection {
     let conn = Connection::open(db_config.get_database()).unwrap();
     conn.execute("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, name TEXT, email TEXT UNIQUE);", []).unwrap();
 
@@ -58,6 +58,8 @@ pub fn create_db(db_config: &DbConfig) {
     "#;
 
     conn.execute(credential_table, []).unwrap();
+
+    conn
 }
 
 pub async fn create_test_user(db_config: DbConfig) {
