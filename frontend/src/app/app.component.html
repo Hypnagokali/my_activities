@@ -18,7 +18,7 @@
         <div class="flex">
           <ng-container *ngIf="user | async as user; else notLoggedIn">
             <div class="p-2 md:p-4 hover:underline">
-              <a href="/account">Account</a>
+              <a routerLink="/account">Account</a>
             </div>
             <div class="p-2 md:p-4 hover:underline">
               Logout
@@ -26,11 +26,11 @@
           </ng-container>
           <ng-template #notLoggedIn>
             <div class="p-2 md:p-4 hover:underline">
-              <a href="/login">Login</a>
+              <a routerLink="/login">Login</a>
             </div>
           </ng-template>
           <div class="p-2 md:p-4 hover:underline">
-            <a href="/">Infos</a>
+            <a routerLink="/" routerLinkActive="active">Infos</a>
           </div>
         </div>
       </div>

@@ -19,6 +19,7 @@ impl UserUpdateError {
     }
 }
 
+
 impl From<rusqlite::Error> for UserUpdateError {
     fn from(e: rusqlite::Error) -> Self {
         Self {

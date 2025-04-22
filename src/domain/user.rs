@@ -15,6 +15,7 @@ impl User {
             name: name,
         }
     }
+    
 }
 
 pub struct Credentials {

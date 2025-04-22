@@ -151,9 +151,7 @@ impl UserApi for UserService {
 
 #[cfg(test)]
 mod user_service_tests {
-    use std::{fs::remove_file, sync::Arc};
-
-    use rusqlite::{Connection, OpenFlags};
+    use std::sync::Arc;
 
     use crate::{config::db::DbConfig, create_db, domain::{user::{MfaConfig, User}, user_api::UserApi}, service::user_service::UserService};
 

@@ -66,23 +66,6 @@ impl<U: UserApi> LoadUserService for AuthenticationService<U> {
         })
 
     }
-
-    fn on_success_handler(
-        &self,
-        _req: &actix_web::HttpRequest,
-        user: &Self::User,
-    ) -> futures::future::LocalBoxFuture<'_, Result<(), authfix::login::HandlerError>> {
-        println!("Success: user -> {}", user.name);
-        Box::pin(async {
-            Ok(())
-        })
-    }
-
-    fn on_error_handler(&self, _req: &actix_web::HttpRequest) -> futures::future::LocalBoxFuture<'_, Result<(), authfix::login::HandlerError>> {
-        Box::pin(async {
-            Ok(())
-        })
-    }
 }
 
 #[cfg(test)]

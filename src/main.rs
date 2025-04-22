@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
-use actix_session::{config::{PersistentSession, SessionLifecycle}, storage::CookieSessionStore, SessionMiddleware};
-use actix_web::{cookie::Key, HttpServer};
+use authfix::actix_session::{config::{PersistentSession, SessionLifecycle}, storage::CookieSessionStore, SessionMiddleware};
+use actix_web::{cookie::Key, middleware::Logger, HttpServer};
 use argon2::{password_hash::{rand_core::OsRng, SaltString}, Argon2, PasswordHasher};
 use config::{config::Config, db::DbConfig};
 use domain::{user::User, user_api::UserApi};
-use rusqlite::{Connection, OpenFlags};
+use rusqlite::Connection;
 use service::user_service::UserService;
 
 mod config;
@@ -14,21 +14,6 @@ mod service;
 mod domain;
 mod error;
 mod app_factory;
-
-
-// pub fn config_main_app(cfg: &mut web::ServiceConfig) {
-//     let db_config = DbConfig::new("activities_db.sqlite3");
-//     let user_service = Arc::new(UserService::new(Arc::new(db_config)));
-//     let user_api = Arc::clone(&user_service);
-//     let auth_api: Arc<dyn AuthenticationApi> = Arc::new(AuthenticationService::new(Arc::clone(&user_service)));
-    
-//     let user_api_data = Data::from(user_api);
-//     let auth_api_data = Data::from(auth_api);
-
-//     cfg.configure(activity_controller::config)
-//         .app_data(user_api_data.clone())
-//         .app_data(auth_api_data.clone());
-// }
 
 pub fn create_session_middleware (key: Key) -> SessionMiddleware<CookieSessionStore> {
     let persistent_session = PersistentSession::default();
@@ -68,7 +53,7 @@ pub async fn create_test_user(db_config: DbConfig) {
 
     match user_service.find_by_email("test@example.org").await {
         Ok(_) => {
-            println!("Test user already created");
+            println!("Test user `Hans` already created");
         },
         Err(_) => {
             // assuming it was a not found error
@@ -76,6 +61,22 @@ pub async fn create_test_user(db_config: DbConfig) {
 
             let salt = SaltString::generate(&mut OsRng);
             let password = Argon2::default().hash_password("test123".as_bytes(), &salt).expect("Hash test password not working");
+
+            let user = user_service.save_user_with_credentials(user, &password.to_string()).await.expect("Cannot save test user");
+            println!("Test user with id = {} created.", user.id);
+        },
+    }    
+
+    match user_service.find_by_email("linda@example.org").await {
+        Ok(_) => {
+            println!("Test user `Linda` already created");
+        },
+        Err(_) => {
+            // assuming it was a not found error
+            let user = User::new(0, "linda@example.org".to_owned(), "Linda".to_owned());
+
+            let salt = SaltString::generate(&mut OsRng);
+            let password = Argon2::default().hash_password("linda123".as_bytes(), &salt).expect("Hash test password not working");
 
             let user = user_service.save_user_with_credentials(user, &password.to_string()).await.expect("Cannot save test user");
             println!("Test user with id = {} created.", user.id);
@@ -93,9 +94,11 @@ async fn main() -> std::io::Result<()> {
     create_test_user(db_config).await;
 
     let encrypt_key_for_cookies = Key::generate();
+    env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
 
     let server = HttpServer::new(move || {
-        app_factory::create_app(encrypt_key_for_cookies.clone())
+        app_factory::create_app(encrypt_key_for_cookies.clone(), DbConfig::new("activities_db.sqlite3"))
+        .wrap(Logger::default())
     })
     .bind((config.host.clone(), config.port))?
     .run();
