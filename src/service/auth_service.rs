@@ -43,28 +43,27 @@ impl<U: UserApi> AuthenticationApi for AuthenticationService<U> {
     }
 }
 
+#[async_trait]
 impl<U: UserApi> LoadUserService for AuthenticationService<U> {
     type User = User;
 
-    fn load_user(
+    async fn load_user(
         &self,
         login_token: &authfix::login::LoginToken,
-    ) -> futures::future::LocalBoxFuture<'_, Result<Self::User, authfix::login::LoadUserError>> {
+    ) -> Result<Self::User, authfix::login::LoadUserError> {
         let email = login_token.username.clone();
         let password = login_token.password.clone();
-        Box::pin(async move {
-            match self.user_api.find_by_email(&email).await {
-                Ok(user) => {
-                    if self.is_password_correct(&user, &password).await {
-                        Ok(user)
-                    } else {
-                        Err(authfix::login::LoadUserError::LoginFailed)
-                    }
-                },
-                Err(_) => Err(authfix::login::LoadUserError::LoginFailed),
-            }
-        })
-
+        
+        match self.user_api.find_by_email(&email).await {
+            Ok(user) => {
+                if self.is_password_correct(&user, &password).await {
+                    Ok(user)
+                } else {
+                    Err(authfix::login::LoadUserError::LoginFailed)
+                }
+            },
+            Err(_) => Err(authfix::login::LoadUserError::LoginFailed),
+        }
     }
 }
 

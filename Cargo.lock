@@ -405,6 +405,7 @@ version = "0.1.0-alpha.1"
 dependencies = [
  "actix-session",
  "actix-web",
+ "async-trait",
  "base32 0.5.1",
  "futures",
  "google-authenticator",
