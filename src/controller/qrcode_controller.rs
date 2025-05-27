@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use authfix::actix_session::Session;
 use actix_web::{error, get, http::header::ContentType, post, web::{Data, ServiceConfig}, HttpResponse, Responder, Result};
-use authfix::{multifactor::google_auth::{TotpSecretGenerator, MFA_ID_AUTHENTICATOR_TOTP}, AuthToken};
+use authfix::{multifactor::authenticator::{TotpSecretGenerator, MFA_ID_AUTHENTICATOR_TOTP}, AuthToken};
 
 use crate::domain::{user::{MfaConfig, User}, user_api::UserApi};
 

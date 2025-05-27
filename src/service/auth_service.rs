@@ -2,8 +2,7 @@ use std::sync::Arc;
 
 use argon2::{Argon2, PasswordHash, PasswordVerifier};
 use async_trait::async_trait;
-use authfix::login::LoadUserService;
-
+use authfix::login::LoadUserByCredentials;
 use crate::domain::{auth_api::AuthenticationApi, user::User, user_api::UserApi};
 
 pub struct AuthenticationService<U: UserApi> {
@@ -44,14 +43,14 @@ impl<U: UserApi> AuthenticationApi for AuthenticationService<U> {
 }
 
 #[async_trait]
-impl<U: UserApi> LoadUserService for AuthenticationService<U> {
+impl<U: UserApi> LoadUserByCredentials for AuthenticationService<U> {
     type User = User;
 
     async fn load_user(
         &self,
         login_token: &authfix::login::LoginToken,
     ) -> Result<Self::User, authfix::login::LoadUserError> {
-        let email = login_token.username.clone();
+        let email = login_token.email.clone();
         let password = login_token.password.clone();
         
         match self.user_api.find_by_email(&email).await {

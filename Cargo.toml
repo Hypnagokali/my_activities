@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-authfix = { path = "authfix", features = ["google_auth"]}
+authfix = { path = "authfix", features = ["authenticator"]}
 dotenvy = "0.15.7"
 actix-web="4.10.2"
 mime = "0.3.17"

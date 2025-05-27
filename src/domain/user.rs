@@ -1,3 +1,4 @@
+use authfix::AccountInfo;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -6,6 +7,8 @@ pub struct User {
     pub email: String,
     pub name: String,
 }
+
+impl AccountInfo for User {}
 
 impl User {
     pub fn new(id: i32, email: String, name: String) -> Self {

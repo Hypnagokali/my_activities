@@ -23,7 +23,7 @@ export class LoginComponent {
 
   login() {
     this.http.post("/api/login", {
-      username: this.email,
+      email: this.email,
       password: this.password
     }).subscribe(data => {
       this.authService.retrieveUser();
