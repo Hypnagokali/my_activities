@@ -1,5 +1,9 @@
 @import 'tailwindcss';
 
+.base-link {
+    @apply text-blue-500 no-underline hover:underline
+}
+
 .btn-primary {
     @apply px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600
 }

@@ -47,7 +47,7 @@ impl ServiceFactory<
     let routes = Routes::new("/api", "/login", "/login/mfa", "/logout");
     let login_handler = AuthenticationService::new(Arc::clone(&user_service));
     
-    SessionLoginAppBuilder::create(login_handler)
+    SessionLoginAppBuilder::create(login_handler, cookie_key.clone())
         .set_login_routes_and_unsecured_paths(routes, vec!["/api/test", "/web/index.html"])
         .set_session_middleware(create_test_session_middleware(cookie_key))
         .build()
