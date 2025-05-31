@@ -94,7 +94,7 @@ async fn main() -> std::io::Result<()> {
     create_test_user(db_config).await;
 
     let encrypt_key_for_cookies = Key::generate();
-    env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
+    env_logger::init_from_env(env_logger::Env::new().default_filter_or("debug"));
 
     let server = HttpServer::new(move || {
         app_factory::create_app(encrypt_key_for_cookies.clone(), DbConfig::new("activities_db.sqlite3"))

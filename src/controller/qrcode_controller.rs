@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use authfix::actix_session::Session;
 use actix_web::{error, get, http::header::ContentType, post, web::{Data, ServiceConfig}, HttpResponse, Responder, Result};
 use authfix::{multifactor::authenticator::{TotpSecretGenerator, MFA_ID_AUTHENTICATOR_TOTP}, AuthToken};
@@ -9,7 +7,7 @@ use crate::domain::{user::{MfaConfig, User}, user_api::UserApi};
 const SESSION_KEY_TOTP_SECRET: &str = "totp_secret";
 
 #[get("/totp/debug-user-data")]
-async fn get_user_data(token: AuthToken<User>, user_api: Data<Arc<dyn UserApi>>) -> impl Responder {
+async fn get_user_data(token: AuthToken<User>, user_api: Data<dyn UserApi>) -> impl Responder {
     let creds = user_api.find_credentials_by_user_id(token.get_authenticated_user().id).await.unwrap();
 
     let mfa = creds.mfa_config.unwrap();
@@ -40,7 +38,7 @@ async fn get_qrcode(token: AuthToken<User>, session: Session) -> Result<impl Res
 }
 
 #[post("/totp/set-secret")]
-async fn set_totp_secret(token: AuthToken<User>, session: Session, user_api: Data<Arc<dyn UserApi>>) -> Result<impl Responder> {
+async fn set_totp_secret(token: AuthToken<User>, session: Session, user_api: Data<dyn UserApi>) -> Result<impl Responder> {
     let user_id = token.get_authenticated_user().id;
     let mut creds = user_api.find_credentials_by_user_id(user_id).await
         .map_err(|err| {
@@ -49,6 +47,7 @@ async fn set_totp_secret(token: AuthToken<User>, session: Session, user_api: Dat
         })?;
 
     let secret = session.get::<String>(SESSION_KEY_TOTP_SECRET)?;
+    
     // clean up session
     session.remove(SESSION_KEY_TOTP_SECRET);
 
@@ -71,5 +70,7 @@ async fn set_totp_secret(token: AuthToken<User>, session: Session, user_api: Dat
 
 
 pub fn config(cfg: &mut ServiceConfig) {
-    cfg.service(get_qrcode);
+    cfg.service(get_qrcode)
+    .service(set_totp_secret)
+    .service(get_user_data);
 }

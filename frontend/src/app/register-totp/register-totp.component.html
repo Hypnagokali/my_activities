@@ -1,4 +1,14 @@
 <div>
-    <p>Scan the QR Code with your mobile phone and press register</p>
+    <div class="pb-10">
+        <p>Scan the QR Code with an authenticator app and confirm with 'Register 2FA'</p>
+        <p>The next login should then ask for a TOTP Code</p>
+    </div>
     <img [src]="qrCode">
+    <div>
+        <p>{{ totpMessage }}</p>
+    </div>
+    <div class="pt-10">
+        <button class="btn-primary me-5" (click)="registerTotp()">Register 2FA</button>
+        <button class="btn-primary" (click)="debugTotp()">DEBUG</button>
+    </div>
 </div>
