@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Component } from '@angular/core';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from './services/auth.service';
 import { Observable } from 'rxjs';
 import { User } from './models/user.model';
@@ -29,5 +29,10 @@ export class AppComponent {
     });
 
     this.user = this.authService.user;
+  }
+
+  logout(event: MouseEvent) {
+    event.preventDefault();
+    this.authService.logout();
   }
 }

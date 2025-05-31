@@ -67,4 +67,12 @@ export class AuthService {
     );
   }
 
+  logout() {
+    this.http.post('/api/logout', null).subscribe(() => {
+      this._userSubject.next(null);
+      this.router.navigateByUrl('/login');
+    });
+
+  }
+
 }
