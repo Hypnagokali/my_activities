@@ -1,9 +1,10 @@
 use std::sync::Arc;
 
+use actix_web::HttpRequest;
 use argon2::{Argon2, PasswordHash, PasswordVerifier};
 use async_trait::async_trait;
-use authfix::login::LoadUserByCredentials;
-use crate::domain::{auth_api::AuthenticationApi, user::User, user_api::UserApi};
+use authfix::{login::LoadUserByCredentials, mfa::{HandleMfaRequest, MfaError}};
+use crate::{domain::{auth_api::AuthenticationApi, user::User, user_api::UserApi}, error::errors::QueryUserError};
 
 pub struct AuthenticationService<U: UserApi> {
     user_api: Arc<U>
@@ -65,6 +66,48 @@ impl<U: UserApi> LoadUserByCredentials for AuthenticationService<U> {
         }
     }
 }
+
+
+pub struct HandleMfaRequestImpl<S> {
+    user_api: Arc<S>,
+}
+
+impl<S: UserApi> HandleMfaRequestImpl<S> {
+    pub fn new(user_api: Arc<S>) -> Self {
+        Self {
+            user_api,
+        }
+    }
+}
+
+#[async_trait(?Send)]
+impl<S: UserApi> HandleMfaRequest for HandleMfaRequestImpl<S> {
+    type User = User;
+
+    async fn get_mfa_id_by_user(&self, user: &Self::User) -> Result<Option<String>, MfaError> {
+        let creds = self.user_api.find_credentials_by_user_id(user.id).await?;
+        if let Some(mfa_config) = creds.mfa_config {
+            Ok(Some(mfa_config.mfa_id))
+        } else {
+            Ok(None)
+        }
+    }
+
+    #[allow(unused)]
+    async fn is_condition_met(&self, user: &Self::User, req: HttpRequest) -> bool {
+        match self.user_api.find_credentials_by_user_id(user.id).await {
+            Ok(creds) => creds.mfa_config.is_some(),
+            Err(_) => false,
+        }
+    }
+}
+
+impl From<QueryUserError> for MfaError {
+    fn from(value: QueryUserError) -> Self {
+        MfaError::new(&format!("User query error: {}", &value))
+    }
+}
+
 
 #[cfg(test)]
 mod tests {

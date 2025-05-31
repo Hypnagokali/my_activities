@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use authfix::multifactor::{GetTotpSecretError, TotpSecretRepository};
 use rusqlite::Connection;
 
 use crate::{config::db::DbConfig, domain::{user::{Credentials, MfaConfig, User}, user_api::UserApi}, error::errors::{QueryUserError, UserUpdateError}};
@@ -13,6 +14,31 @@ impl UserService {
     pub fn new(db_config: Arc<DbConfig>) -> Self {
         Self {
             db_config
+        }
+    }
+}
+
+impl From<QueryUserError> for GetTotpSecretError {
+    fn from(value: QueryUserError) -> Self {
+        GetTotpSecretError::new(&format!("Query user error: {}", value))
+    }
+}
+
+#[async_trait]
+impl TotpSecretRepository<User> for UserService {
+    async fn get_auth_secret(&self, user: &User) -> Result<String, GetTotpSecretError> {
+        let creds = self.find_credentials_by_user_id(user.id).await?;
+    
+        if let Some(config) = creds.mfa_config {
+            if let Some(secret) = config.secret {
+                Ok(secret)
+            } else {
+                log::error!("User tries to login with authenticator, but no secret was configured (User id = {})", user.id);
+                Err(GetTotpSecretError::new("No TOTP secret configured"))
+            }
+        } else {
+            log::error!("User tries to login with authenticator without mfa configured (User id = {})", user.id);
+            Err(GetTotpSecretError::new("No mfa config found in users credentials"))
         }
     }
 }

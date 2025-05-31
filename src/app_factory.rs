@@ -1,12 +1,13 @@
 use std::sync::Arc;
 
 use actix_files::Files;
-use authfix::actix_session::{config::{PersistentSession, SessionLifecycle}, storage::CookieSessionStore, SessionMiddleware};
+use authfix::{actix_session::{config::{PersistentSession, SessionLifecycle}, storage::CookieSessionStore, SessionMiddleware}, mfa::MfaConfig, multifactor::authenticator::AuthenticatorFactor};
 use actix_web::{body::MessageBody, cookie::Key, dev::{ServiceFactory, ServiceRequest, ServiceResponse}, get, web::{self, Data}, App, Error, HttpResponse, Responder};
 use authfix::{config::Routes, session::app_builder::SessionLoginAppBuilder};
 use serde::Serialize;
 
-use crate::{config::db::DbConfig, controller::{activity_controller, qrcode_controller, root_controller}, domain::user_api::UserApi, service::{auth_service::AuthenticationService, user_service::UserService}};
+use crate::{config::db::DbConfig, controller::{activity_controller, qrcode_controller, root_controller}, domain::{user_api::UserApi}, service::{auth_service::{AuthenticationService, HandleMfaRequestImpl}, user_service::UserService}};
+
 
 pub fn create_test_session_middleware (key: Key) -> SessionMiddleware<CookieSessionStore> {
     let persistent_session = PersistentSession::default();
@@ -46,10 +47,14 @@ impl ServiceFactory<
 
     let routes = Routes::new("/api", "/login", "/login/mfa", "/logout");
     let login_handler = AuthenticationService::new(Arc::clone(&user_service));
+    let handle_mfa = HandleMfaRequestImpl::new(Arc::clone(&user_service));
+
+    let mfa_config = MfaConfig::new(vec![Box::new(AuthenticatorFactor::new(Arc::clone(&user_service)))], handle_mfa);
     
     SessionLoginAppBuilder::create(login_handler, cookie_key.clone())
         .set_login_routes_and_unsecured_paths(routes, vec!["/api/test", "/web/index.html"])
         .set_session_middleware(create_test_session_middleware(cookie_key))
+        .set_mfa(mfa_config)
         .build()
     .service(
         web::scope("/api")

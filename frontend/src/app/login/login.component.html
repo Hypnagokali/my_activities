@@ -1,16 +1,30 @@
 <div>
     <div class="sm:w-lg bg-amber-100 pl-8 pr-8 pb-8 pt-4 rounded-lg">
         <h3 class="text-lg pb-4 font-bold">Login</h3>
-        <div class="grid grid-cols-2 gap-1 p-1">
+        <div *ngIf="!needsMfa;else mfa_content">
+            <div class="grid grid-cols-2 gap-1 p-1">
             <label for="email">E-Mail:</label>
             <input class="std-input" id="email" type="text" placeholder="your@email.de" [(ngModel)]="email">
+            </div>
+            <div class="grid grid-cols-2 gap-1 p-1">
+                <label for="password">Password:</label>
+                <input class="std-input" id="password" type="password" [(ngModel)]="password">
+            </div>
+            <div>
+                <button class="btn-primary" (click)="login()">Login</button>
+            </div>
         </div>
-        <div class="grid grid-cols-2 gap-1 p-1">
-            <label for="password">Password:</label>
-            <input class="std-input" id="password" type="password" [(ngModel)]="password">
-        </div>
-        <div>
-            <button class="btn-primary" (click)="login()">Login</button>
-        </div>
+        <ng-template #mfa_content>
+            <div>
+                <div class="grid grid-cols-2 gap-1 p-1">
+                <label for="password">Code:</label>
+                <input class="std-input" id="mfa-code" type="text" [(ngModel)]="mfaCode">
+            </div>
+            <div>
+                <button class="btn-primary" (click)="sendCode()">Login with code</button>
+            </div>
+            </div>
+        </ng-template>
+        
     </div>
 </div>
