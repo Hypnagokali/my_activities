@@ -18,7 +18,7 @@ pub fn create_test_session_middleware (key: Key) -> SessionMiddleware<CookieSess
                 .cookie_same_site(actix_web::cookie::SameSite::Lax)
                 .cookie_secure(false)
                 .session_lifecycle(lc)
-                .build()    
+                .build()
 }
 
 #[derive(Serialize)]
@@ -51,9 +51,8 @@ impl ServiceFactory<
 
     let mfa_config = MfaConfig::new(vec![Box::new(AuthenticatorFactor::new(Arc::clone(&user_service)))], handle_mfa);
     
-    SessionLoginAppBuilder::create(login_handler, cookie_key.clone())
-        .set_login_routes_and_unsecured_paths(routes, vec!["/api/test", "/web/index.html"])
-        .set_session_middleware(create_test_session_middleware(cookie_key))
+    SessionLoginAppBuilder::create_with_session_middleware(login_handler, create_test_session_middleware(cookie_key))
+        .set_login_routes_and_public_paths(routes, vec!["/api/test", "/web/index.html"])
         .set_mfa(mfa_config)
         .build()
     .service(
