@@ -1,13 +1,17 @@
 <div>
-    <div class="pb-10">
+    <div class="mb-10">
         <p>Scan the QR Code with an authenticator app and confirm with 'Register 2FA'</p>
         <p>The next login should then ask for a TOTP Code</p>
     </div>
     <img [src]="qrCode">
     <div>
-        <p>{{ totpMessage }}</p>
+        <p [ngClass]="{ 'text-red-600': isErrorMessage }">{{ totpMessage }}</p>
     </div>
-    <div class="pt-10">
+    <div class="w-2xs mt-3">
+        <label for="input_code" class="text-xs">TOTP to check</label>
+        <input class="std-input" type="text" id="input_code" [(ngModel)]="codeToCheck">
+    </div>
+    <div class="mt-10">
         <button class="btn-primary me-5" (click)="registerTotp()">Register 2FA</button>
         <button class="btn-primary" (click)="debugTotp()">DEBUG</button>
     </div>

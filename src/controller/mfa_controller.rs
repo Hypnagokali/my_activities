@@ -1,5 +1,5 @@
-use authfix::actix_session::Session;
-use actix_web::{error, get, http::header::ContentType, post, web::{Data, ServiceConfig}, HttpResponse, Responder, Result};
+use authfix::{actix_session::Session, multifactor::authenticator::Authenticator, session::handlers::MfaRequestBody};
+use actix_web::{error, get, http::header::ContentType, post, web::{Data, Json, ServiceConfig}, HttpResponse, Responder, Result};
 use authfix::{multifactor::authenticator::{TotpSecretGenerator, MFA_ID_AUTHENTICATOR_TOTP}, AuthToken};
 
 use crate::domain::{user::{MfaConfig, User}, user_api::UserApi};
@@ -38,7 +38,9 @@ async fn get_qrcode(token: AuthToken<User>, session: Session) -> Result<impl Res
 }
 
 #[post("/totp/set-secret")]
-async fn set_totp_secret(token: AuthToken<User>, session: Session, user_api: Data<dyn UserApi>) -> Result<impl Responder> {
+async fn set_totp_secret(code: Json<MfaRequestBody>, token: AuthToken<User>, session: Session, user_api: Data<dyn UserApi>) 
+    -> Result<impl Responder> 
+{
     let user_id = token.get_authenticated_user().id;
     let mut creds = user_api.find_credentials_by_user_id(user_id).await
         .map_err(|err| {
@@ -47,11 +49,13 @@ async fn set_totp_secret(token: AuthToken<User>, session: Session, user_api: Dat
         })?;
 
     let secret = session.get::<String>(SESSION_KEY_TOTP_SECRET)?;
-    
-    // clean up session
-    session.remove(SESSION_KEY_TOTP_SECRET);
 
     if let Some(secret) = secret {
+        // It seems to be a good practice to check a generated code before saving the secret
+        if !Authenticator::verify(&secret, code.get_code(), 0) {
+            return Err(error::ErrorUnauthorized("The TOTP was wrong"));
+        }
+
         let mfa_config = MfaConfig::with_secret(MFA_ID_AUTHENTICATOR_TOTP, &secret);
         creds.set_mfa(mfa_config);
         user_api.save_credentials(creds).await
@@ -60,10 +64,14 @@ async fn set_totp_secret(token: AuthToken<User>, session: Session, user_api: Dat
                 error::ErrorBadRequest("Cannot save secret")
             })?;
 
+        // clean up session
+        session.remove(SESSION_KEY_TOTP_SECRET);
         Ok(HttpResponse::Ok())   
     } else {
         log::error!("Session does not contain the secret.");
 
+        // clean up session
+        session.remove(SESSION_KEY_TOTP_SECRET);
         Err(error::ErrorBadRequest("Cannot save secret"))
     }
 }
