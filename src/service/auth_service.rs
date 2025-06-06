@@ -33,7 +33,7 @@ impl<U: UserApi> AuthenticationApi for AuthenticationService<U> {
                         }
                     },
                     Err(_) => {
-                        eprintln!("Could not create PasswordHash from credentials");
+                        log::error!("Could not create PasswordHash from credentials");
                         false
                     },
                 }
@@ -113,31 +113,35 @@ impl From<QueryUserError> for MfaError {
 mod tests {
     use std::sync::Arc;
 
-    use crate::{config::db::DbConfig, domain::{auth_api::AuthenticationApi, user::User}, service::user_service::UserService};
+    use crate::{config::db::DbConfig, create_db, domain::{auth_api::AuthenticationApi, user::User, user_api::UserApi}, service::user_service::UserService};
 
     use super::AuthenticationService;
 
 
     #[tokio::test]
     async fn should_return_true_when_password_correct() {
+        // Arrange
         let db_config = DbConfig::new(":memory");
+        create_db(&db_config);
         let user_service = Arc::new(UserService::new(Arc::new(db_config)));
         let auth = AuthenticationService::new(Arc::clone(&user_service));
+        let user = User::new(0, "test@example.org".to_owned(), "Hans".to_owned());
+        let saved_user = user_service.save_user_with_credentials(user, "test123").await.unwrap();
 
-        let user = User::new(1, "test@example.org".to_owned(), "Hans".to_owned());
-
-        assert!(auth.is_password_correct(&user, "test123").await, "The password should match");
+        // Act & Assert 
+        assert!(auth.is_password_correct(&saved_user, "test123").await, "The password should match");
     }
 
     #[tokio::test]
     async fn should_return_false_when_password_incorrect() {
         let db_config = DbConfig::new(":memory");
+        create_db(&db_config);
         let user_service = Arc::new(UserService::new(Arc::new(db_config)));
         let auth = AuthenticationService::new(Arc::clone(&user_service));
+        let user = User::new(0, "test@example.org".to_owned(), "Hans".to_owned());
+        let saved_user = user_service.save_user_with_credentials(user, "test123").await.unwrap();
 
-        let user = User::new(1, "test@example.org".to_owned(), "Hans".to_owned());
-
-        assert!(!auth.is_password_correct(&user, "some123").await, "Password is not correct. This should return false");
+        assert!(!auth.is_password_correct(&saved_user, "some123").await, "Password is not correct. This should return false");
     }
 
 }

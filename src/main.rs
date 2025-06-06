@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use authfix::actix_session::{config::{PersistentSession, SessionLifecycle}, storage::CookieSessionStore, SessionMiddleware};
 use actix_web::{cookie::Key, middleware::Logger, HttpServer};
-use argon2::{password_hash::{rand_core::OsRng, SaltString}, Argon2, PasswordHasher};
 use config::{config::Config, db::DbConfig};
 use domain::{user::User, user_api::UserApi};
 use rusqlite::Connection;
@@ -27,6 +26,7 @@ pub fn create_session_middleware (key: Key) -> SessionMiddleware<CookieSessionSt
                 .build()    
 }
 
+// ToDo: This should placed inside an separate init / config module
 pub fn create_db(db_config: &DbConfig) -> Connection {
     let conn = Connection::open(db_config.get_database()).unwrap();
     conn.execute("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, name TEXT, email TEXT UNIQUE);", []).unwrap();
@@ -59,10 +59,7 @@ pub async fn create_test_user(db_config: DbConfig) {
             // assuming it was a not found error
             let user = User::new(0, "test@example.org".to_owned(), "Hans".to_owned());
 
-            let salt = SaltString::generate(&mut OsRng);
-            let password = Argon2::default().hash_password("test123".as_bytes(), &salt).expect("Hash test password not working");
-
-            let user = user_service.save_user_with_credentials(user, &password.to_string()).await.expect("Cannot save test user");
+            let user = user_service.save_user_with_credentials(user, "test123").await.expect("Cannot save test user");
             println!("Test user with id = {} created.", user.id);
         },
     }    
@@ -75,10 +72,7 @@ pub async fn create_test_user(db_config: DbConfig) {
             // assuming it was a not found error
             let user = User::new(0, "linda@example.org".to_owned(), "Linda".to_owned());
 
-            let salt = SaltString::generate(&mut OsRng);
-            let password = Argon2::default().hash_password("linda123".as_bytes(), &salt).expect("Hash test password not working");
-
-            let user = user_service.save_user_with_credentials(user, &password.to_string()).await.expect("Cannot save test user");
+            let user = user_service.save_user_with_credentials(user, "linda123").await.expect("Cannot save test user");
             println!("Test user with id = {} created.", user.id);
         },
     }    

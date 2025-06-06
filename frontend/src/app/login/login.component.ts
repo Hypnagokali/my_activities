@@ -19,7 +19,6 @@ interface LoginResponse {
     CommonModule,
   ],
   templateUrl: './login.component.html',
-  styleUrl: './login.component.css'
 })
 export class LoginComponent {
 

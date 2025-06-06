@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use argon2::{password_hash::{rand_core::OsRng, SaltString}, Argon2, PasswordHasher};
 use async_trait::async_trait;
 use authfix::multifactor::{GetTotpSecretError, TotpSecretRepository};
 use rusqlite::Connection;
@@ -15,6 +16,16 @@ impl UserService {
         Self {
             db_config
         }
+    }
+
+    /// Utility method for password hashing
+    pub fn hash_password(password: &str) -> Result<String, UserUpdateError> {
+        let salt = SaltString::generate(&mut OsRng);
+
+        Ok(Argon2::default()
+            .hash_password(password.as_bytes(), &salt)
+            .map_err(|_| UserUpdateError::new("Cannot hash password"))?
+            .to_string())
     }
 }
 
@@ -69,28 +80,30 @@ impl UserApi for UserService {
     
     }
 
+    /// Takes in plain text password
     async fn save_user_with_credentials(&self, user: User, password: &str) -> Result<User, UserUpdateError> {
         let db = self.db_config.get_database().to_owned();
         let owned_pass = password.to_owned();
-        let user_id = tokio::task::spawn_blocking(move || {
+        
+        let user_id = tokio::task::spawn_blocking(move || {           
+            let hashed_password = UserService::hash_password(&owned_pass)?;
             let mut conn = Connection::open(db)?;
 
             let tx = conn.transaction()?;
-
 
             let mut user_id = user.id;
             if user_id > 0 {
                 let update_user = "UPDATE users SET name = ?1, email =?2 WHERE id = ?3";
                 let update_creds = "UPDATE credentials SET password = ?1 WHERE user_id = ?2";
                 tx.execute(update_user, (user.name, user.email, user.id))?;
-                tx.execute(update_creds, (owned_pass, user.id))?;
+                tx.execute(update_creds, (hashed_password.to_string(), user.id))?;
             } else {
                 let insert_user = "INSERT INTO users (name, email) values(?1, ?2)";
                 let insert_creds = "INSERT INTO credentials (password, user_id) values(?1, ?2)";
                 tx.execute(insert_user, (user.name, user.email))?;
 
                 user_id = tx.last_insert_rowid() as i32;
-                tx.execute(insert_creds, (owned_pass, user_id))?;
+                tx.execute(insert_creds, (hashed_password.to_string(), user_id))?;
             }
 
             tx.commit()?;
@@ -107,6 +120,7 @@ impl UserApi for UserService {
         
     }
 
+    /// Expects that password is already hashed
     async fn save_credentials(&self, credentials: Credentials) -> Result<Credentials, UserUpdateError> {
         if credentials.user_id == 0 {
             Err(UserUpdateError::new("Cannot save credentials if user_id is 0"))
@@ -175,6 +189,7 @@ impl UserApi for UserService {
     }
 }
 
+
 #[cfg(test)]
 mod user_service_tests {
     use std::sync::Arc;
@@ -208,6 +223,5 @@ mod user_service_tests {
         assert!(mfa_config.secret.is_some());
         assert_eq!(mfa_config.secret.unwrap(), "asecret");
     }
-
 
 }

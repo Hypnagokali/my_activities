@@ -9,7 +9,6 @@ import { RouterModule } from '@angular/router';
   selector: 'app-account',
   imports: [CommonModule, RouterModule],
   templateUrl: './account.component.html',
-  styleUrl: './account.component.css'
 })
 export class AccountComponent {
 

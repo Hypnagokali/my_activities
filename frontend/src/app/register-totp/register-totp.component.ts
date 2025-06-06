@@ -8,7 +8,6 @@ import { catchError, throwError } from 'rxjs';
   selector: 'app-register-qrcode',
   imports: [FormsModule, NgClass],
   templateUrl: './register-totp.component.html',
-  styleUrl: './register-totp.component.css'
 })
 export class RegisterTotpComponent {
 
