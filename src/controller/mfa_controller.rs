@@ -1,21 +1,21 @@
-use authfix::{actix_session::Session, multifactor::authenticator::Authenticator, session::handlers::MfaRequestBody};
+use actix_session::Session;
 use actix_web::{error, get, http::header::ContentType, post, web::{Data, Json, ServiceConfig}, HttpResponse, Responder, Result};
-use authfix::{multifactor::authenticator::{TotpSecretGenerator, MFA_ID_AUTHENTICATOR_TOTP}, AuthToken};
+use authfix::{multifactor::factor_impl::authenticator::{Authenticator, AuthenticatorFactor, TotpSecretGenerator}, session::auth_flow::MfaRequestBody, AuthToken};
 
-use crate::domain::{user::{MfaConfig, User}, user_api::UserApi};
+use crate::domain::{user::{Mfa, User}, user_api::UserApi};
 
 const SESSION_KEY_TOTP_SECRET: &str = "totp_secret";
 
 #[get("/totp/debug-user-data")]
 async fn get_user_data(token: AuthToken<User>, user_api: Data<dyn UserApi>) -> impl Responder {
-    let creds = user_api.find_credentials_by_user_id(token.get_authenticated_user().id).await.unwrap();
+    let creds = user_api.find_credentials_by_user_id(token.authenticated_user().id).await.unwrap();
 
     let mfa = creds.mfa_config.unwrap();
     let r = format!(r#"{{
         "user": "{}",
         "mfa_id": "{}",
         "secret": "{}"
-    }}"#, token.get_authenticated_user().name, mfa.mfa_id, mfa.secret.unwrap());
+    }}"#, token.authenticated_user().name, mfa.mfa_id, mfa.secret.unwrap());
 
     HttpResponse::Ok().json(r)
 }
@@ -23,14 +23,14 @@ async fn get_user_data(token: AuthToken<User>, user_api: Data<dyn UserApi>) -> i
 
 #[get("/totp/qrcode")]
 async fn get_qrcode(token: AuthToken<User>, session: Session) -> Result<impl Responder> {
-    let email = &token.get_authenticated_user().email;
+    let email = &token.authenticated_user().email;
 
     let generator = TotpSecretGenerator::new("MyActivities", email);
-    let secret = generator.get_secret();
+    let secret = generator.secret();
 
     session.insert(SESSION_KEY_TOTP_SECRET, secret)?;
 
-    let qrcode = generator.get_qr_code().unwrap();
+    let qrcode = generator.qr_code().unwrap();
 
     Ok(HttpResponse::Ok()
         .insert_header(ContentType(mime::IMAGE_SVG))
@@ -41,7 +41,7 @@ async fn get_qrcode(token: AuthToken<User>, session: Session) -> Result<impl Res
 async fn set_totp_secret(code: Json<MfaRequestBody>, token: AuthToken<User>, session: Session, user_api: Data<dyn UserApi>) 
     -> Result<impl Responder> 
 {
-    let user_id = token.get_authenticated_user().id;
+    let user_id = token.authenticated_user().id;
     let mut creds = user_api.find_credentials_by_user_id(user_id).await
         .map_err(|err| {
             log::error!("Cannot load credentials: {}", err);
@@ -52,11 +52,11 @@ async fn set_totp_secret(code: Json<MfaRequestBody>, token: AuthToken<User>, ses
 
     if let Some(secret) = secret {
         // It seems to be a good practice to check a generated code before saving the secret
-        if !Authenticator::verify(&secret, code.get_code(), 0) {
+        if !Authenticator::verify(&secret, code.code(), 0) {
             return Err(error::ErrorUnauthorized("The TOTP was wrong"));
         }
 
-        let mfa_config = MfaConfig::with_secret(MFA_ID_AUTHENTICATOR_TOTP, &secret);
+        let mfa_config = Mfa::with_secret(&AuthenticatorFactor::id(), &secret);
         creds.set_mfa(mfa_config);
         user_api.save_credentials(creds).await
             .map_err(|err| {

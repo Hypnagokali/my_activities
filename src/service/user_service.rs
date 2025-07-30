@@ -2,10 +2,10 @@ use std::sync::Arc;
 
 use argon2::{password_hash::{rand_core::OsRng, SaltString}, Argon2, PasswordHasher};
 use async_trait::async_trait;
-use authfix::multifactor::{GetTotpSecretError, TotpSecretRepository};
+use authfix::multifactor::factor_impl::authenticator::{GetTotpSecretError, TotpSecretRepository};
 use rusqlite::Connection;
 
-use crate::{config::db::DbConfig, domain::{user::{Credentials, MfaConfig, User}, user_api::UserApi}, error::errors::{QueryUserError, UserUpdateError}};
+use crate::{config::db::DbConfig, domain::{user::{Credentials, Mfa, User}, user_api::UserApi}, error::errors::{QueryUserError, UserUpdateError}};
 
 pub struct UserService {
     db_config: Arc<DbConfig>
@@ -35,9 +35,10 @@ impl From<QueryUserError> for GetTotpSecretError {
     }
 }
 
-#[async_trait]
-impl TotpSecretRepository<User> for UserService {
-    async fn get_auth_secret(&self, user: &User) -> Result<String, GetTotpSecretError> {
+impl TotpSecretRepository for UserService {
+    type User = User;
+    
+    async fn auth_secret(&self, user: &User) -> Result<String, GetTotpSecretError> {
         let creds = self.find_credentials_by_user_id(user.id).await?;
     
         if let Some(config) = creds.mfa_config {
@@ -173,9 +174,9 @@ impl UserApi for UserService {
                 let mut mfa_config = None;
                 if let Some(mfa_id) = mfa_id {
                     if let Some(mfa_secret) = mfa_secret {
-                        mfa_config = Some(MfaConfig::with_secret(&mfa_id, &mfa_secret));
+                        mfa_config = Some(Mfa::with_secret(&mfa_id, &mfa_secret));
                     } else {
-                        mfa_config = Some(MfaConfig::new(&mfa_id));
+                        mfa_config = Some(Mfa::new(&mfa_id));
                     }
                 }
 
@@ -194,7 +195,7 @@ impl UserApi for UserService {
 mod user_service_tests {
     use std::sync::Arc;
 
-    use crate::{config::db::DbConfig, create_db, domain::{user::{MfaConfig, User}, user_api::UserApi}, service::user_service::UserService};
+    use crate::{config::db::DbConfig, create_db, domain::{user::{Mfa, User}, user_api::UserApi}, service::user_service::UserService};
 
 
     #[tokio::test]
@@ -211,7 +212,7 @@ mod user_service_tests {
 
         // Act
         let mut creds = user_service.find_credentials_by_user_id(saved_user.id).await.unwrap();
-        creds.set_mfa(MfaConfig::with_secret("MFA_ID", "asecret"));
+        creds.set_mfa(Mfa::with_secret("MFA_ID", "asecret"));
         user_service.save_credentials(creds).await.unwrap();
 
         // Assert

@@ -3,7 +3,7 @@ use std::sync::Arc;
 use actix_web::HttpRequest;
 use argon2::{Argon2, PasswordHash, PasswordVerifier};
 use async_trait::async_trait;
-use authfix::{login::LoadUserByCredentials, mfa::{HandleMfaRequest, MfaError}};
+use authfix::{login::LoadUserByCredentials, multifactor::config::{HandleMfaRequest, MfaError}};
 use crate::{domain::{auth_api::AuthenticationApi, user::User, user_api::UserApi}, error::errors::QueryUserError};
 
 pub struct AuthenticationService<U: UserApi> {
@@ -43,7 +43,6 @@ impl<U: UserApi> AuthenticationApi for AuthenticationService<U> {
     }
 }
 
-#[async_trait]
 impl<U: UserApi> LoadUserByCredentials for AuthenticationService<U> {
     type User = User;
 
@@ -84,7 +83,7 @@ impl<S: UserApi> HandleMfaRequestImpl<S> {
 impl<S: UserApi> HandleMfaRequest for HandleMfaRequestImpl<S> {
     type User = User;
 
-    async fn get_mfa_id_by_user(&self, user: &Self::User) -> Result<Option<String>, MfaError> {
+    async fn mfa_id_by_user(&self, user: &Self::User) -> Result<Option<String>, MfaError> {
         let creds = self.user_api.find_credentials_by_user_id(user.id).await?;
         if let Some(mfa_config) = creds.mfa_config {
             Ok(Some(mfa_config.mfa_id))

@@ -1,7 +1,7 @@
-use authfix::AccountInfo;
+use authfix::session::AccountInfo;
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct User {
     pub id: i32,
     pub email: String,
@@ -24,7 +24,7 @@ impl User {
 pub struct Credentials {
     pub id: i32,
     pub password: String,
-    pub mfa_config: Option<MfaConfig>,
+    pub mfa_config: Option<Mfa>,
     pub user_id: i32,
 
 }
@@ -39,17 +39,17 @@ impl Credentials {
         }
     }
 
-    pub fn set_mfa(&mut self, mfa_config: MfaConfig) {
+    pub fn set_mfa(&mut self, mfa_config: Mfa) {
         self.mfa_config = Some(mfa_config);
     }
 }
 
-pub struct MfaConfig {
+pub struct Mfa {
     pub mfa_id: String,
     pub secret: Option<String>
 }
 
-impl MfaConfig {
+impl Mfa {
     pub fn new(mfa_id: &str) -> Self {
         Self {
             mfa_id: mfa_id.to_owned(),

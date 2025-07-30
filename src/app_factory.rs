@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
 use actix_files::Files;
-use authfix::{actix_session::{config::{PersistentSession, SessionLifecycle}, storage::CookieSessionStore, SessionMiddleware}, mfa::MfaConfig, multifactor::authenticator::AuthenticatorFactor};
+use actix_session::{config::{PersistentSession, SessionLifecycle}, storage::CookieSessionStore, SessionMiddleware};
 use actix_web::{body::MessageBody, cookie::Key, dev::{ServiceFactory, ServiceRequest, ServiceResponse}, get, web::{self, Data}, App, Error, HttpResponse, Responder};
-use authfix::{config::Routes, session::app_builder::SessionLoginAppBuilder};
+use authfix::{multifactor::{config::MfaConfig, factor_impl::authenticator::AuthenticatorFactor}, session::{app_builder::SessionLoginAppBuilder, config::Routes}};
 use serde::Serialize;
 
 use crate::{config::db::DbConfig, controller::{activity_controller, mfa_controller, root_controller}, domain::{user_api::UserApi}, service::{auth_service::{AuthenticationService, HandleMfaRequestImpl}, user_service::UserService}};

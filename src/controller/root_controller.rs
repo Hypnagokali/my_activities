@@ -5,7 +5,7 @@ use crate::domain::user::User;
 
 #[get("/current-user")]
 pub async fn get_authenticated_user(auth_token: AuthToken<User>) -> impl Responder {
-    HttpResponse::Ok().json(auth_token.get_authenticated_user().clone())
+    HttpResponse::Ok().json(&*auth_token.authenticated_user())
 }
 
 

@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use authfix::actix_session::{config::{PersistentSession, SessionLifecycle}, storage::CookieSessionStore, SessionMiddleware};
+use actix_session::{config::{PersistentSession, SessionLifecycle}, storage::CookieSessionStore, SessionMiddleware};
 use actix_web::{cookie::Key, middleware::Logger, HttpServer};
 use config::{config::Config, db::DbConfig};
 use domain::{user::User, user_api::UserApi};
